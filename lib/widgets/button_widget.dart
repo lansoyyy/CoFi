@@ -17,7 +17,7 @@ class ButtonWidget extends StatefulWidget {
 
   const ButtonWidget({
     super.key,
-    this.radius = 10,
+    this.radius = 100,
     required this.label,
     this.textColor = Colors.white,
     required this.onPressed,

@@ -1,3 +1,4 @@
+import 'package:cofi/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../utils/colors.dart';
@@ -107,6 +108,12 @@ class LoginScreen extends StatelessWidget {
                       color: Colors.red[700]!,
                       textColor: Colors.white,
                       onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HomeScreen(),
+                          ),
+                        );
                         // Handle login
                       },
                     ),

@@ -1,3 +1,4 @@
+import 'package:cofi/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import '../widgets/text_widget.dart';
 
@@ -77,7 +78,14 @@ class CommunityCommitmentScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(28)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const HomeScreen(),
+                    ),
+                  );
+                },
                 child: TextWidget(
                   text: 'Agree and Continue',
                   fontSize: 17,

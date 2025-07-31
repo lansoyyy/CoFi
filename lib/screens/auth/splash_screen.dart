@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../utils/colors.dart';
-import '../widgets/text_widget.dart';
+import '../../utils/colors.dart';
+import '../../widgets/text_widget.dart';
 import 'landing_screen.dart';
 
 class SplashScreen extends StatefulWidget {

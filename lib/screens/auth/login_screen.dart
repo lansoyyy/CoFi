@@ -1,9 +1,9 @@
 import 'package:cofi/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../utils/colors.dart';
-import '../widgets/text_widget.dart';
-import '../widgets/button_widget.dart';
+import '../../utils/colors.dart';
+import '../../widgets/text_widget.dart';
+import '../../widgets/button_widget.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});

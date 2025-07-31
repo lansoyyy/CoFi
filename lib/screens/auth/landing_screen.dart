@@ -1,11 +1,11 @@
-import 'package:cofi/screens/login_screen.dart';
-import 'package:cofi/screens/signup_screen.dart';
+import 'package:cofi/screens/auth/login_screen.dart';
+import 'package:cofi/screens/auth/signup_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../utils/colors.dart';
+import '../../utils/colors.dart';
 
-import '../widgets/button_widget.dart';
-import '../widgets/text_widget.dart';
+import '../../widgets/button_widget.dart';
+import '../../widgets/text_widget.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});

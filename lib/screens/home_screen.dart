@@ -1,37 +1,57 @@
+import 'package:cofi/screens/tabs/collections_tab.dart';
+import 'package:cofi/screens/tabs/profile_tab.dart';
 import 'package:cofi/utils/colors.dart';
 import 'package:cofi/widgets/text_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import 'explore_tab.dart';
+import 'tabs/explore_tab.dart';
+import 'tabs/community_tab.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
+
+  final List<Widget> _tabs = const [
+    ExploreTab(),
+    CommunityTab(),
+    // Placeholder widgets for Collections and Profile
+    CollectionsTab(),
+    ProfileTab()
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: FloatingActionButton.extended(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-        ),
-        backgroundColor: primary,
-        onPressed: () => {},
-        label: TextButton.icon(
-          onPressed: () {},
-          label:
-              TextWidget(text: 'Map', fontSize: 16, color: white, isBold: true),
-          icon: Icon(
-            FontAwesomeIcons.map,
-            color: white,
-          ),
-        ),
-      ),
+      floatingActionButton: _currentIndex != 0
+          ? null
+          : FloatingActionButton.extended(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+              backgroundColor: primary,
+              onPressed: () => {},
+              label: TextButton.icon(
+                onPressed: () {},
+                label: TextWidget(
+                    text: 'Map', fontSize: 16, color: white, isBold: true),
+                icon: Icon(
+                  FontAwesomeIcons.map,
+                  color: white,
+                ),
+              ),
+            ),
       backgroundColor: Colors.black,
       bottomNavigationBar: _buildBottomNavBar(),
-      body: const SafeArea(
-        child: ExploreTab(),
+      body: SafeArea(
+        child: _tabs[_currentIndex],
       ),
     );
   }
@@ -61,8 +81,12 @@ class HomeScreen extends StatelessWidget {
           label: 'Profile',
         ),
       ],
-      currentIndex: 0,
-      onTap: (i) {},
+      currentIndex: _currentIndex,
+      onTap: (i) {
+        setState(() {
+          _currentIndex = i;
+        });
+      },
     );
   }
 }

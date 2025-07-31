@@ -1,7 +1,7 @@
-import 'package:cofi/screens/community_commitment_screen.dart';
+import 'package:cofi/screens/auth/community_commitment_screen.dart';
 import 'package:flutter/material.dart';
-import '../utils/colors.dart';
-import '../widgets/text_widget.dart';
+import '../../utils/colors.dart';
+import '../../widgets/text_widget.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});

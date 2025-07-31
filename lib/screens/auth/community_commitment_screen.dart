@@ -1,6 +1,6 @@
 import 'package:cofi/screens/home_screen.dart';
 import 'package:flutter/material.dart';
-import '../widgets/text_widget.dart';
+import '../../widgets/text_widget.dart';
 
 class CommunityCommitmentScreen extends StatelessWidget {
   const CommunityCommitmentScreen({super.key});

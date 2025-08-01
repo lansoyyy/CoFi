@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../widgets/text_widget.dart';
 import '../utils/colors.dart';
+import 'reviews_screen.dart';
+import 'log_visit_screen.dart';
+import 'write_review_screen.dart';
 
 class CafeDetailsScreen extends StatelessWidget {
   const CafeDetailsScreen({super.key});
@@ -118,7 +121,7 @@ class CafeDetailsScreen extends StatelessWidget {
             const SizedBox(height: 32),
             _buildReviewsSummary(),
             _buildReviewsSection(),
-            _buildActionButtons(),
+            _buildActionButtons(context),
           ],
         ),
       ),
@@ -442,13 +445,20 @@ class CafeDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(24, 16, 24, 16),
       child: Column(
         children: [
           ElevatedButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ReviewsScreen(),
+                ),
+              );
+            },
             style: ElevatedButton.styleFrom(
               maximumSize: Size(350, 50),
               minimumSize: Size(350, 50),
@@ -469,7 +479,14 @@ class CafeDetailsScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LogVisitScreen(),
+                    ),
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   side: BorderSide(color: Colors.white),
@@ -490,9 +507,16 @@ class CafeDetailsScreen extends StatelessWidget {
                 ),
               ),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WriteReviewScreen(),
+                    ),
+                  );
+                },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+                  backgroundColor: primary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),

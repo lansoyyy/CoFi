@@ -1,3 +1,4 @@
+import 'package:cofi/screens/cafe_details_screen.dart';
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -239,13 +240,23 @@ class _ExploreTabState extends State<ExploreTab> {
         const SizedBox(height: 18),
         _sectionTitle('Shops'),
         const SizedBox(height: 10),
-        _buildShopCard(
-          name: 'Fiend Coffee Club',
-          city: 'Davao City',
-          hours: '11:00 AM - 02:00 AM',
-          rating: '5.0 (10)',
-          isFeatured: true,
-          icon: FontAwesomeIcons.mugSaucer,
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CafeDetailsScreen(),
+              ),
+            );
+          },
+          child: _buildShopCard(
+            name: 'Fiend Coffee Club',
+            city: 'Davao City',
+            hours: '11:00 AM - 02:00 AM',
+            rating: '5.0 (10)',
+            isFeatured: true,
+            icon: FontAwesomeIcons.mugSaucer,
+          ),
         ),
         const SizedBox(height: 10),
         _buildShopCard(

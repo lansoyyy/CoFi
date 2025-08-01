@@ -1,8 +1,8 @@
 import 'package:cofi/screens/auth/landing_screen.dart';
-import 'package:cofi/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'screens/auth/splash_screen.dart';
 import 'screens/auth/signup_screen.dart';
+import 'screens/cafe_details_screen.dart';
 import 'utils/colors.dart';
 
 void main() {
@@ -20,7 +20,10 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: primary),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: const SplashScreen(),
+      routes: {
+        '/cafeDetails': (context) => const CafeDetailsScreen(),
+      },
     );
   }
 }

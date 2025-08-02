@@ -1,6 +1,8 @@
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
 import '../../widgets/text_widget.dart';
+import '../../widgets/list_bottom_sheet.dart';
+import '../../widgets/create_list_bottom_sheet.dart';
 
 class CollectionsTab extends StatelessWidget {
   const CollectionsTab({super.key});
@@ -30,7 +32,14 @@ class CollectionsTab extends StatelessWidget {
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: TextButton.icon(
-                      onPressed: () {},
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          backgroundColor: Colors.transparent,
+                          isScrollControlled: true,
+                          builder: (context) => const CreateListBottomSheet(),
+                        );
+                      },
                       icon:
                           const Icon(Icons.add, color: Colors.white, size: 22),
                       label: TextWidget(
@@ -63,6 +72,7 @@ class CollectionsTab extends StatelessWidget {
             ),
             // Visited Cafes
             _buildCollectionItem(
+              context: context,
               icon: Icons.coffee,
               iconBg: primary,
               title: 'Visited Cafes',
@@ -85,6 +95,7 @@ class CollectionsTab extends StatelessWidget {
               ),
             ),
             _buildCollectionItem(
+              context: context,
               icon: Icons.local_cafe,
               iconBg: primary,
               title: 'Cafes with Wifi',
@@ -93,6 +104,7 @@ class CollectionsTab extends StatelessWidget {
                   const Icon(Icons.local_cafe, color: Colors.white, size: 28),
             ),
             _buildCollectionItem(
+              context: context,
               icon: Icons.local_cafe,
               iconBg: primary,
               title: 'Untitled',
@@ -106,47 +118,54 @@ class CollectionsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildCollectionItem({
-    required IconData icon,
-    required Color iconBg,
-    required String title,
-    required String subtitle,
-    Widget? customIcon,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: iconBg,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: customIcon ?? Icon(icon, color: Colors.white, size: 28),
-            ),
-          ),
-          const SizedBox(width: 18),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextWidget(
-                text: title,
-                fontSize: 18,
-                color: Colors.white,
-                isBold: true,
+  Widget _buildCollectionItem(
+      {required IconData icon,
+      required Color iconBg,
+      required String title,
+      required String subtitle,
+      Widget? customIcon,
+      context}) {
+    return GestureDetector(
+      onTap: () {
+        if (title == 'Cafes with Wifi' || title == 'Untitled') {
+          ListBottomSheet.show(context);
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: iconBg,
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: 2),
-              TextWidget(
-                text: subtitle,
-                fontSize: 15,
-                color: Colors.white54,
+              child: Center(
+                child: customIcon ?? Icon(icon, color: Colors.white, size: 28),
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(width: 18),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextWidget(
+                  text: title,
+                  fontSize: 18,
+                  color: Colors.white,
+                  isBold: true,
+                ),
+                const SizedBox(height: 2),
+                TextWidget(
+                  text: subtitle,
+                  fontSize: 15,
+                  color: Colors.white54,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

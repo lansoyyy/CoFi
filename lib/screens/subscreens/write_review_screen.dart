@@ -1,9 +1,10 @@
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
-import '../widgets/text_widget.dart';
+import '../../widgets/text_widget.dart';
+import 'review_shop_screen.dart';
 
-class LogVisitScreen extends StatelessWidget {
-  const LogVisitScreen({Key? key}) : super(key: key);
+class WriteReviewScreen extends StatelessWidget {
+  const WriteReviewScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +13,7 @@ class LogVisitScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.black,
         title: TextWidget(
-          text: 'Log your visit',
+          text: 'Write a review',
           fontSize: 18,
           color: Colors.white,
           isBold: true,
@@ -64,43 +65,61 @@ class LogVisitScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             TextWidget(
-              text: 'Write a note',
+              text: 'How was it?',
               fontSize: 16,
               color: Colors.white,
               isBold: true,
             ),
             const SizedBox(height: 8),
-            TextField(
-              maxLines: 5,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.grey[800],
-                hintText: 'Write your note here...',
-                hintStyle: const TextStyle(color: Colors.white70),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-              ),
+            TextWidget(
+              text:
+                  'Review this shop and share your experience with the community.',
+              fontSize: 14,
+              color: Colors.white70,
             ),
             const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    side: BorderSide(color: Colors.white),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: TextWidget(
+                    text: 'Maybe Later',
+                    fontSize: 16,
+                    color: Colors.white,
                   ),
                 ),
-                child: TextWidget(
-                  text: 'Submit',
-                  fontSize: 16,
-                  color: Colors.white,
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ReviewShopScreen(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: TextWidget(
+                    text: 'Review Shop',
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),

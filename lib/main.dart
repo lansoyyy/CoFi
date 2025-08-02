@@ -2,7 +2,7 @@ import 'package:cofi/screens/auth/landing_screen.dart';
 import 'package:flutter/material.dart';
 import 'screens/auth/splash_screen.dart';
 import 'screens/auth/signup_screen.dart';
-import 'screens/cafe_details_screen.dart';
+import 'screens/subscreens/cafe_details_screen.dart';
 import 'utils/colors.dart';
 
 void main() {

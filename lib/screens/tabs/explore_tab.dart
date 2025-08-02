@@ -1,4 +1,4 @@
-import 'package:cofi/screens/cafe_details_screen.dart';
+import 'package:cofi/screens/subscreens/cafe_details_screen.dart';
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../widgets/text_widget.dart';
-import '../utils/colors.dart';
+import '../../widgets/text_widget.dart';
+import '../../utils/colors.dart';
 import 'reviews_screen.dart';
 import 'log_visit_screen.dart';
 import 'write_review_screen.dart';

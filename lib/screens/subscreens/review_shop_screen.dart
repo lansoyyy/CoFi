@@ -1,6 +1,6 @@
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
-import '../widgets/text_widget.dart';
+import '../../widgets/text_widget.dart';
 
 class ReviewShopScreen extends StatelessWidget {
   const ReviewShopScreen({Key? key}) : super(key: key);

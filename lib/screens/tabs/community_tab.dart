@@ -1,4 +1,10 @@
+import 'package:cofi/screens/subscreens/event_details_screen.dart';
 import 'package:cofi/utils/colors.dart';
+import 'package:flutter/material.dart';
+import '../../widgets/text_widget.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
+import '../job_details_screen.dart';
 import 'package:flutter/material.dart';
 import '../../widgets/text_widget.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -59,41 +65,51 @@ class CommunityTab extends StatelessWidget {
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: Stack(
-                  children: [
-                    Container(
-                      height: 200,
-                      width: double.infinity,
-                      color: Colors.grey[800],
-                      child: const Center(
-                        child:
-                            Icon(Icons.image, color: Colors.white38, size: 60),
-                      ),
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EventDetailsScreen(),
                     ),
-                    Positioned(
-                      left: 16,
-                      bottom: 24,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          TextWidget(
-                            text: 'Coffee Day',
-                            fontSize: 20,
-                            color: Colors.white,
-                            isBold: true,
-                          ),
-                          const SizedBox(height: 4),
-                          TextWidget(
-                            text: 'SAT, 5 JUL | 04:00 PM - 08:00 PM',
-                            fontSize: 14,
-                            color: Colors.white,
-                          ),
-                        ],
+                  );
+                },
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Stack(
+                    children: [
+                      Container(
+                        height: 200,
+                        width: double.infinity,
+                        color: Colors.grey[800],
+                        child: const Center(
+                          child: Icon(Icons.image,
+                              color: Colors.white38, size: 60),
+                        ),
                       ),
-                    ),
-                  ],
+                      Positioned(
+                        left: 16,
+                        bottom: 24,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextWidget(
+                              text: 'Coffee Day',
+                              fontSize: 20,
+                              color: Colors.white,
+                              isBold: true,
+                            ),
+                            const SizedBox(height: 4),
+                            TextWidget(
+                              text: 'SAT, 5 JUL | 04:00 PM - 08:00 PM',
+                              fontSize: 14,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -110,14 +126,14 @@ class CommunityTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            ..._buildJobList(),
+            ..._buildJobList(context),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _buildJobList() {
+  List<Widget> _buildJobList(context) {
     final jobs = [
       {
         'cafe': 'Baoba Cafe',
@@ -146,58 +162,67 @@ class CommunityTab extends StatelessWidget {
       },
     ];
     return jobs.map((job) {
-      return Padding(
-        padding: const EdgeInsets.only(left: 24, right: 24, bottom: 16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: const BoxDecoration(
-                color: primary,
-                shape: BoxShape.circle,
+      return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const JobDetailsScreen(),
               ),
-              child: const Center(
-                child:
-                    Icon(Icons.bookmark_border, color: Colors.white, size: 28),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextWidget(
-                    text: job['cafe']!,
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.7),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.only(left: 24, right: 24, bottom: 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: const BoxDecoration(
+                    color: primary,
+                    shape: BoxShape.circle,
                   ),
-                  TextWidget(
-                    text: job['title']!,
-                    fontSize: 16,
-                    color: Colors.white,
-                    isBold: true,
+                  child: const Center(
+                    child: Icon(Icons.bookmark_border,
+                        color: Colors.white, size: 28),
                   ),
-                  const SizedBox(height: 2),
-                  Row(
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.location_on,
-                          color: Colors.white54, size: 16),
-                      const SizedBox(width: 4),
                       TextWidget(
-                        text: job['city']!,
-                        fontSize: 13,
-                        color: Colors.white54,
+                        text: job['cafe']!,
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                      TextWidget(
+                        text: job['title']!,
+                        fontSize: 16,
+                        color: Colors.white,
+                        isBold: true,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on,
+                              color: Colors.white54, size: 16),
+                          const SizedBox(width: 4),
+                          TextWidget(
+                            text: job['city']!,
+                            fontSize: 13,
+                            color: Colors.white54,
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      );
+          ));
     }).toList();
   }
 }

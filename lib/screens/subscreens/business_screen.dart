@@ -125,7 +125,10 @@ class BusinessScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                _buildMenuItem('Submit a shop', Icons.chevron_right),
+                GestureDetector(
+                    onTap: () => Navigator.pushNamed(context, '/submitShop'),
+                    child:
+                        _buildMenuItem('Submit a shop', Icons.chevron_right)),
                 _buildClickableMenuItem('Post an event', Icons.chevron_right,
                     () => MyEventsBottomSheet.show(context)),
                 _buildMenuItem(

@@ -1,6 +1,10 @@
+import 'package:cofi/widgets/my_events_bottom_sheet.dart';
+import 'package:cofi/widgets/my_jobs_bottom_sheet.dart';
+import 'package:cofi/widgets/post_job_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
+import '../../widgets/post_event_bottom_sheet.dart';
 
 class BusinessProfileScreen extends StatelessWidget {
   const BusinessProfileScreen({super.key});
@@ -94,16 +98,26 @@ class BusinessProfileScreen extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildSectionCard(
-                            title: 'Reviews',
-                            subtitle: 'Show my shops reviews',
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.pushNamed(context, '/yourReviews');
+                            },
+                            child: _buildSectionCard(
+                              title: 'Reviews',
+                              subtitle: 'Show my shops reviews',
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: _buildSectionCard(
-                            title: 'Events',
-                            subtitle: 'Show upcoming Events',
+                          child: GestureDetector(
+                            onTap: () {
+                              MyEventsBottomSheet.show(context);
+                            },
+                            child: _buildSectionCard(
+                              title: 'Events',
+                              subtitle: 'Show upcoming Events',
+                            ),
                           ),
                         ),
                       ],
@@ -115,16 +129,31 @@ class BusinessProfileScreen extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildSectionCard(
-                            title: 'Post an Event',
-                            subtitle: 'List my upcoming events',
+                          child: GestureDetector(
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                backgroundColor: Colors.transparent,
+                                isScrollControlled: true,
+                                useSafeArea: true,
+                                builder: (context) =>
+                                    const PostEventBottomSheet(),
+                              );
+                            },
+                            child: _buildSectionCard(
+                              title: 'Post an Event',
+                              subtitle: 'List my upcoming events',
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: _buildSectionCard(
-                            title: 'Jobs',
-                            subtitle: 'Show my submitted jobs',
+                          child: GestureDetector(
+                            onTap: () => MyJobsBottomSheet.show(context),
+                            child: _buildSectionCard(
+                              title: 'Jobs',
+                              subtitle: 'Show my submitted jobs',
+                            ),
                           ),
                         ),
                       ],
@@ -136,9 +165,23 @@ class BusinessProfileScreen extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildSectionCard(
-                            title: 'Post a Job',
-                            subtitle: 'List a job - find staff fast',
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                              // Immediately show the post job form
+                              showModalBottomSheet(
+                                context: context,
+                                backgroundColor: Colors.transparent,
+                                isScrollControlled: true,
+                                useSafeArea: true,
+                                builder: (newContext) =>
+                                    const PostJobBottomSheet(),
+                              );
+                            },
+                            child: _buildSectionCard(
+                              title: 'Post a Job',
+                              subtitle: 'List a job - find staff fast',
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),

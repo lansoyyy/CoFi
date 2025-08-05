@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/colors.dart';
 import '../widgets/text_widget.dart';
+import '../widgets/post_job_bottom_sheet.dart';
 
 class MyJobsBottomSheet extends StatelessWidget {
   const MyJobsBottomSheet({super.key});
@@ -43,6 +44,14 @@ class MyJobsBottomSheet extends StatelessWidget {
                   GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
+                      // Immediately show the post job form
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: Colors.transparent,
+                        isScrollControlled: true,
+                        useSafeArea: true,
+                        builder: (newContext) => const PostJobBottomSheet(),
+                      );
                     },
                     child: const Icon(
                       Icons.add,

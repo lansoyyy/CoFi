@@ -147,7 +147,10 @@ class BusinessScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                _buildMenuItem('Personal information', Icons.chevron_right),
+                GestureDetector(
+                    onTap: () => Navigator.pushNamed(context, '/submitShop'),
+                    child: _buildMenuItem(
+                        'Personal information', Icons.chevron_right)),
 
                 const SizedBox(height: 32),
 

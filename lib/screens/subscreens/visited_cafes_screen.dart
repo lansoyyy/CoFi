@@ -119,16 +119,11 @@ class VisitedCafesScreen extends StatelessWidget {
                       ),
                     ),
                   )
-                : ClipOval(
-                    child: Container(
-                      color: backgroundColor,
-                      child: const Center(
-                        child: Icon(
-                          Icons.image,
-                          color: Colors.white54,
-                          size: 24,
-                        ),
-                      ),
+                : const Center(
+                    child: Icon(
+                      Icons.image,
+                      color: Colors.white54,
+                      size: 24,
                     ),
                   ),
           ),

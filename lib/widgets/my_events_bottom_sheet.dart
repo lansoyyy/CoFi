@@ -1,3 +1,4 @@
+import 'package:cofi/widgets/post_event_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import '../utils/colors.dart';
 import '../widgets/text_widget.dart';
@@ -38,6 +39,25 @@ class MyEventsBottomSheet extends StatelessWidget {
                     fontSize: 18,
                     color: Colors.white,
                     isBold: true,
+                  ),
+                  Expanded(child: SizedBox()),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      // Immediately show the post event form
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: Colors.transparent,
+                        isScrollControlled: true,
+                        useSafeArea: true,
+                        builder: (newContext) => const PostEventBottomSheet(),
+                      );
+                    },
+                    child: Icon(
+                      Icons.add,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
                 ],
               ),

@@ -37,9 +37,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(30),
               ),
               backgroundColor: primary,
-              onPressed: () => {},
+              onPressed: () {
+                Navigator.pushNamed(context, '/mapView');
+              },
               label: TextButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushNamed(context, '/mapView');
+                },
                 label: TextWidget(
                     text: 'Map', fontSize: 16, color: white, isBold: true),
                 icon: Icon(

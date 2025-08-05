@@ -8,6 +8,7 @@ import 'screens/subscreens/visited_cafes_screen.dart';
 import 'screens/subscreens/submit_shop_screen.dart';
 import 'screens/subscreens/business_screen.dart';
 import 'screens/subscreens/business_profile_screen.dart';
+import 'screens/subscreens/map_view_screen.dart';
 import 'utils/colors.dart';
 
 void main() {
@@ -33,6 +34,7 @@ class MyApp extends StatelessWidget {
         '/submitShop': (context) => const SubmitShopScreen(),
         '/business': (context) => const BusinessScreen(),
         '/businessProfile': (context) => const BusinessProfileScreen(),
+        '/mapView': (context) => const MapViewScreen(),
       },
     );
   }

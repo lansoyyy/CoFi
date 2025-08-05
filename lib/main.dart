@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import 'screens/auth/splash_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/subscreens/cafe_details_screen.dart';
+import 'screens/subscreens/your_reviews_screen.dart';
+import 'screens/subscreens/visited_cafes_screen.dart';
+import 'screens/subscreens/submit_shop_screen.dart';
+import 'screens/subscreens/business_screen.dart';
+import 'screens/subscreens/business_profile_screen.dart';
 import 'utils/colors.dart';
 
 void main() {
@@ -23,6 +28,11 @@ class MyApp extends StatelessWidget {
       home: const SplashScreen(),
       routes: {
         '/cafeDetails': (context) => const CafeDetailsScreen(),
+        '/yourReviews': (context) => const YourReviewsScreen(),
+        '/visitedCafes': (context) => const VisitedCafesScreen(),
+        '/submitShop': (context) => const SubmitShopScreen(),
+        '/business': (context) => const BusinessScreen(),
+        '/businessProfile': (context) => const BusinessProfileScreen(),
       },
     );
   }

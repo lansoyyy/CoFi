@@ -91,14 +91,23 @@ class ProfileTab extends StatelessWidget {
                       isBold: true,
                     ),
                     const SizedBox(height: 18),
-                    _buildStatRow('1', 'Shops Visited', 'This week'),
+                    _buildStatRow('1', 'Shops Visited', 'This week', onTap: () {
+                      Navigator.pushNamed(context, '/visitedCafes');
+                    }),
                     const Divider(color: Colors.white24, thickness: 1),
-                    _buildStatRow('3', 'Shops Visited', 'This month'),
+                    _buildStatRow('3', 'Shops Visited', 'This month',
+                        onTap: () {
+                      Navigator.pushNamed(context, '/visitedCafes');
+                    }),
                     const Divider(color: Colors.white24, thickness: 1),
                     _buildStatRow('5', 'Shops Visited', 'This year',
-                        underline: true),
+                        underline: true, onTap: () {
+                      Navigator.pushNamed(context, '/visitedCafes');
+                    }),
                     const Divider(color: Colors.white24, thickness: 1),
-                    _buildStatRow('3', 'Shops Reviewed', ''),
+                    _buildStatRow('3', 'Shops Reviewed', '', onTap: () {
+                      Navigator.pushNamed(context, '/yourReviews');
+                    }),
                   ],
                 ),
               ),
@@ -117,41 +126,51 @@ class ProfileTab extends StatelessWidget {
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(32),
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 16),
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: const BoxDecoration(
-                        color: primary,
-                        shape: BoxShape.circle,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, '/submitShop');
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 16),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: const BoxDecoration(
+                            color: primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.local_cafe,
+                                color: Colors.white, size: 28),
+                          ),
+                        ),
                       ),
-                      child: const Center(
-                        child: Icon(Icons.local_cafe,
-                            color: Colors.white, size: 28),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextWidget(
+                          text: 'Submit A Shop',
+                          fontSize: 18,
+                          color: Colors.white,
+                          isBold: true,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextWidget(
-                        text: 'Submit A Shop',
-                        fontSize: 18,
-                        color: Colors.white,
-                        isBold: true,
+                      IconButton(
+                        icon: const Icon(Icons.arrow_forward_ios,
+                            color: Colors.white, size: 22),
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/submitShop');
+                        },
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.arrow_forward_ios,
-                          color: Colors.white, size: 22),
-                      onPressed: () {},
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -221,8 +240,8 @@ class ProfileTab extends StatelessWidget {
   }
 
   Widget _buildStatRow(String stat, String title, String subtitle,
-      {bool underline = false}) {
-    return Padding(
+      {bool underline = false, VoidCallback? onTap}) {
+    Widget content = Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,5 +280,14 @@ class ProfileTab extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap != null) {
+      return GestureDetector(
+        onTap: onTap,
+        child: content,
+      );
+    }
+
+    return content;
   }
 }

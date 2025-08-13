@@ -1,6 +1,7 @@
 import 'package:cofi/screens/auth/community_commitment_screen.dart';
 import 'package:flutter/material.dart';
-import '../../utils/colors.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/text_widget.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -13,6 +14,70 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   bool _obscurePassword = true;
   final TextEditingController _birthdayController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _birthdayController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _signUp() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+    try {
+      final first = _firstNameController.text.trim();
+      final last = _lastNameController.text.trim();
+      final email = _emailController.text.trim();
+      final pwd = _passwordController.text;
+      final birthday = _birthdayController.text.trim();
+
+      final cred = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: pwd);
+      await cred.user?.updateDisplayName('$first $last');
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(cred.user!.uid)
+          .set({
+        'firstName': first,
+        'lastName': last,
+        'email': email,
+        'birthday': birthday,
+        'commitment': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const CommunityCommitmentScreen(),
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      final msg = e.message ?? 'Sign up failed';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Something went wrong')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,73 +100,100 @@ class _SignupScreenState extends State<SignupScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 12),
-                _buildTextField('First name'),
-                const SizedBox(height: 12),
-                _buildTextField('Last name'),
-                const SizedBox(height: 12),
-                _buildTextField(
-                  'Birthday (mm/dd/yyyy)',
-                  hint:
-                      'To sign up, you need to be at least 18. Your birthday won’t be shared with other people who use Cofi.',
-                  suffixIcon:
-                      const Icon(Icons.arrow_drop_down, color: Colors.white54),
-                  readOnly: true,
-                  controller: _birthdayController,
-                  onTap: () async {
-                    FocusScope.of(context).requestFocus(FocusNode());
-                    DateTime? picked = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime(DateTime.now().year - 18, 1, 1),
-                      firstDate: DateTime(1900),
-                      lastDate: DateTime(DateTime.now().year - 18, 12, 31),
-                      builder: (context, child) {
-                        return Theme(
-                          data: ThemeData.dark().copyWith(
-                            colorScheme: ColorScheme.dark(
-                              primary: const Color(0xFFDF2C2C),
-                              surface: const Color(0xFF222222),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    'First name',
+                    controller: _firstNameController,
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    'Last name',
+                    controller: _lastNameController,
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    'Birthday (mm/dd/yyyy)',
+                    hint:
+                        'To sign up, you need to be at least 18. Your birthday won’t be shared with other people who use Cofi.',
+                    suffixIcon:
+                        const Icon(Icons.arrow_drop_down, color: Colors.white54),
+                    readOnly: true,
+                    controller: _birthdayController,
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                    onTap: () async {
+                      FocusScope.of(context).requestFocus(FocusNode());
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime(DateTime.now().year - 18, 1, 1),
+                        firstDate: DateTime(1900),
+                        lastDate: DateTime(DateTime.now().year - 18, 12, 31),
+                        builder: (context, child) {
+                          return Theme(
+                            data: ThemeData.dark().copyWith(
+                              colorScheme: const ColorScheme.dark(
+                                primary: Color(0xFFDF2C2C),
+                                surface: Color(0xFF222222),
+                              ),
                             ),
-                          ),
-                          child: child!,
-                        );
-                      },
-                    );
-                    if (picked != null) {
-                      _birthdayController.text =
-                          "${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}";
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
-                _buildTextField('Email', initialValue: 'support@appcourse.io'),
-                const SizedBox(height: 12),
-                _buildTextField(
-                  'Password',
-                  obscureText: _obscurePassword,
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                      color: Colors.white54,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (picked != null) {
+                        _birthdayController.text =
+                            "${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}";
+                      }
                     },
                   ),
-                ),
-                const SizedBox(height: 18),
-                _buildDisclaimer(),
-                const SizedBox(height: 20),
-                _buildButton(),
-                const SizedBox(height: 16),
-              ],
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    'Email',
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Required';
+                      if (!v.contains('@')) return 'Invalid email';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    'Password',
+                    controller: _passwordController,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Required';
+                      if (v.length < 6) return 'Minimum 6 characters';
+                      return null;
+                    },
+                    obscureText: _obscurePassword,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: Colors.white54,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildDisclaimer(),
+                  const SizedBox(height: 20),
+                  _buildButton(),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         ),
@@ -118,6 +210,8 @@ class _SignupScreenState extends State<SignupScreen> {
     String? initialValue,
     TextEditingController? controller,
     VoidCallback? onTap,
+    String? Function(String?)? validator,
+    TextInputType? keyboardType,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -134,6 +228,8 @@ class _SignupScreenState extends State<SignupScreen> {
           initialValue: controller == null ? initialValue : null,
           obscureText: obscureText,
           readOnly: readOnly,
+          validator: validator,
+          keyboardType: keyboardType,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             filled: true,
@@ -175,21 +271,20 @@ class _SignupScreenState extends State<SignupScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         padding: const EdgeInsets.symmetric(vertical: 16),
       ),
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const CommunityCommitmentScreen(),
-          ),
-        );
-      },
-      child: TextWidget(
-        text: 'Agree and continue',
-        fontSize: 17,
-        color: Colors.white,
-        isBold: true,
-        align: TextAlign.center,
-      ),
+      onPressed: _isLoading ? null : _signUp,
+      child: _isLoading
+          ? const SizedBox(
+              height: 22,
+              width: 22,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            )
+          : TextWidget(
+              text: 'Agree and continue',
+              fontSize: 17,
+              color: Colors.white,
+              isBold: true,
+              align: TextAlign.center,
+            ),
     );
   }
 }

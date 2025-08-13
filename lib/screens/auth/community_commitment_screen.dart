@@ -1,9 +1,55 @@
 import 'package:cofi/screens/home_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/text_widget.dart';
 
-class CommunityCommitmentScreen extends StatelessWidget {
+class CommunityCommitmentScreen extends StatefulWidget {
   const CommunityCommitmentScreen({super.key});
+
+  @override
+  State<CommunityCommitmentScreen> createState() =>
+      _CommunityCommitmentScreenState();
+}
+
+class _CommunityCommitmentScreenState extends State<CommunityCommitmentScreen> {
+  bool _isLoading = false;
+
+  Future<void> _agreeAndContinue() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('You must be signed in to continue.')),
+          );
+        }
+        return;
+      }
+
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'commitment': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Failed to update commitment. ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,19 +103,6 @@ class CommunityCommitmentScreen extends StatelessWidget {
                 isBold: false,
                 maxLines: 8,
               ),
-              const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  onPressed: () {},
-                  child: TextWidget(
-                    text: 'Learn more',
-                    fontSize: 14.5,
-                    color: const Color(0xFFDF2C2C),
-                    isBold: true,
-                  ),
-                ),
-              ),
               const Spacer(),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -78,21 +111,23 @@ class CommunityCommitmentScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(28)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const HomeScreen(),
-                    ),
-                  );
-                },
-                child: TextWidget(
-                  text: 'Agree and Continue',
-                  fontSize: 17,
-                  color: Colors.white,
-                  isBold: true,
-                  align: TextAlign.center,
-                ),
+                onPressed: _isLoading ? null : _agreeAndContinue,
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : TextWidget(
+                        text: 'Agree and Continue',
+                        fontSize: 17,
+                        color: Colors.white,
+                        isBold: true,
+                        align: TextAlign.center,
+                      ),
               ),
               const SizedBox(height: 12),
               ElevatedButton(
@@ -102,7 +137,11 @@ class CommunityCommitmentScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(28)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                onPressed: () {},
+                onPressed: _isLoading
+                    ? null
+                    : () {
+                        Navigator.pop(context);
+                      },
                 child: TextWidget(
                   text: 'Decline',
                   fontSize: 17,

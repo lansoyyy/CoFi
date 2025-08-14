@@ -1,9 +1,22 @@
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/text_widget.dart';
 
 class PostJobBottomSheet extends StatefulWidget {
-  const PostJobBottomSheet({super.key});
+  const PostJobBottomSheet({super.key, required this.shopId});
+
+  final String shopId;
+
+  static void show(BuildContext context, {required String shopId}) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => PostJobBottomSheet(shopId: shopId),
+    );
+  }
 
   @override
   State<PostJobBottomSheet> createState() => _PostJobBottomSheetState();
@@ -18,6 +31,7 @@ class _PostJobBottomSheetState extends State<PostJobBottomSheet> {
   final _descriptionController = TextEditingController();
   final _emailController = TextEditingController();
   final _linkController = TextEditingController();
+  bool _saving = false;
 
   @override
   void initState() {
@@ -31,6 +45,61 @@ class _PostJobBottomSheetState extends State<PostJobBottomSheet> {
     _descriptionController.text = 'Add list description';
     _emailController.text = 'SampleCafe@gmail.com';
     _linkController.text = 'www.applyforjob.com/SampleCafejob-name';
+  }
+
+  Future<void> _saveJob() async {
+    final title = _jobNameController.text.trim();
+    final type = _typeController.text.trim();
+    final pay = _payController.text.trim();
+    final requiredSkills = _requiredController.text.trim();
+    final startDate = _startDateController.text.trim();
+    final description = _descriptionController.text.trim();
+    final email = _emailController.text.trim();
+    final link = _linkController.text.trim();
+
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter the Job name.')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      final data = {
+        'title': title,
+        'type': type,
+        'pay': pay,
+        'required': requiredSkills,
+        'startDate': startDate,
+        'description': description,
+        'email': email,
+        'link': link,
+        'status': 'pending',
+        'shopId': widget.shopId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      await FirebaseFirestore.instance
+          .collection('shops')
+          .doc(widget.shopId)
+          .collection('jobs')
+          .add(data);
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Job posted.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to post job: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -138,22 +207,28 @@ class _PostJobBottomSheetState extends State<PostJobBottomSheet> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: () {
-                            // Handle save functionality
-                            Navigator.pop(context);
-                          },
+                          onPressed: _saving ? null : _saveJob,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: primary, // Red color
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(100),
                             ),
                           ),
-                          child: TextWidget(
-                            text: 'Save',
-                            fontSize: 16,
-                            color: Colors.white,
-                            isBold: true,
-                          ),
+                          child: _saving
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                                  ),
+                                )
+                              : TextWidget(
+                                  text: 'Save',
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  isBold: true,
+                                ),
                         ),
                       ),
 
@@ -207,13 +282,4 @@ class _PostJobBottomSheetState extends State<PostJobBottomSheet> {
     );
   }
 
-  static void show(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (context) => const PostJobBottomSheet(),
-    );
-  }
 }

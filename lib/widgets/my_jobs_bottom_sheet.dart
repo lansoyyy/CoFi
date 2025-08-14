@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/colors.dart';
 import '../widgets/text_widget.dart';
 import '../widgets/post_job_bottom_sheet.dart';
 
 class MyJobsBottomSheet extends StatelessWidget {
-  const MyJobsBottomSheet({super.key});
+  const MyJobsBottomSheet({super.key, required this.shopId});
+
+  final String shopId;
 
   @override
   Widget build(BuildContext context) {
@@ -44,14 +47,7 @@ class MyJobsBottomSheet extends StatelessWidget {
                   GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
-                      // Immediately show the post job form
-                      showModalBottomSheet(
-                        context: context,
-                        backgroundColor: Colors.transparent,
-                        isScrollControlled: true,
-                        useSafeArea: true,
-                        builder: (newContext) => const PostJobBottomSheet(),
-                      );
+                      PostJobBottomSheet.show(context, shopId: shopId);
                     },
                     child: const Icon(
                       Icons.add,
@@ -67,26 +63,70 @@ class MyJobsBottomSheet extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    // Barista Job
-                    _buildJobItem(
-                      title: 'Barista',
-                      status: 'Approved',
-                      statusColor: Colors.green,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Sample Job
-                    _buildJobItem(
-                      title: 'Sample Job',
-                      status: 'Pending for approval',
-                      statusColor: Colors.orange,
-                    ),
-
-                    const Spacer(),
-                  ],
+                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
+                      .collection('shops')
+                      .doc(shopId)
+                      .collection('jobs')
+                      .orderBy('createdAt', descending: true)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: TextWidget(
+                          text: 'Failed to load jobs',
+                          fontSize: 14,
+                          color: Colors.red,
+                        ),
+                      );
+                    }
+                    final docs = snapshot.data?.docs ?? [];
+                    if (docs.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextWidget(
+                              text: 'No jobs yet',
+                              fontSize: 16,
+                              color: Colors.white,
+                              isBold: true,
+                            ),
+                            const SizedBox(height: 8),
+                            TextWidget(
+                              text: 'Tap + to post your first job',
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return ListView.separated(
+                      itemCount: docs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 16),
+                      itemBuilder: (context, index) {
+                        final data = docs[index].data();
+                        final title = (data['title'] as String?) ?? 'Untitled';
+                        final status = (data['status'] as String?) ?? 'pending';
+                        final statusColor = status.toLowerCase() == 'approved'
+                            ? Colors.green
+                            : status.toLowerCase() == 'rejected'
+                                ? Colors.red
+                                : Colors.orange;
+                        return _buildJobItem(
+                          title: title,
+                          status: status == 'pending'
+                              ? 'Pending for approval'
+                              : status[0].toUpperCase() + status.substring(1),
+                          statusColor: statusColor,
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ),
@@ -161,13 +201,13 @@ class MyJobsBottomSheet extends StatelessWidget {
     );
   }
 
-  static void show(BuildContext context) {
+  static void show(BuildContext context, {required String shopId}) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (context) => const MyJobsBottomSheet(),
+      builder: (context) => MyJobsBottomSheet(shopId: shopId),
     );
   }
 }

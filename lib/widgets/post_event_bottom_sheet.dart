@@ -1,9 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 
 class PostEventBottomSheet extends StatefulWidget {
-  const PostEventBottomSheet({super.key});
+  const PostEventBottomSheet({super.key, required this.shopId});
+
+  final String shopId;
+
+  static void show(BuildContext context, {required String shopId}) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => PostEventBottomSheet(shopId: shopId),
+    );
+  }
 
   @override
   State<PostEventBottomSheet> createState() => _PostEventBottomSheetState();
@@ -17,6 +30,7 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
   final _aboutController = TextEditingController();
   final _emailController = TextEditingController();
   final _linkController = TextEditingController();
+  bool _saving = false;
 
   @override
   void initState() {
@@ -29,6 +43,61 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
     _aboutController.text = 'Input Field';
     _emailController.text = 'SampleCafe@gmail.com';
     _linkController.text = 'www.applyforjob.com/SampleCafejob-name';
+  }
+
+  Future<void> _saveEvent() async {
+    final title = _eventNameController.text.trim();
+    final date = _dateController.text.trim();
+    final address = _addressController.text.trim();
+    final startDate = _startDateController.text.trim();
+    final about = _aboutController.text.trim();
+    final email = _emailController.text.trim();
+    final link = _linkController.text.trim();
+
+    if (title.isEmpty || date.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter at least Event Name and Date.')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      final data = {
+        'title': title,
+        'date': date,
+        'address': address,
+        'startDate': startDate,
+        'about': about,
+        'email': email,
+        'link': link,
+        'gallery': [],
+        'status': 'pending',
+        'participantsCount': 0,
+        'shopId': widget.shopId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      await FirebaseFirestore.instance
+          .collection('shops')
+          .doc(widget.shopId)
+          .collection('events')
+          .add(data);
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Event posted.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to post event: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -170,10 +239,7 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: () {
-                            // Handle save functionality
-                            Navigator.pop(context);
-                          },
+                          onPressed: _saving ? null : _saveEvent,
                           style: ElevatedButton.styleFrom(
                             backgroundColor:
                                 const Color(0xFFE53E3E), // Red color
@@ -181,12 +247,21 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: TextWidget(
-                            text: 'Save',
-                            fontSize: 16,
-                            color: Colors.white,
-                            isBold: true,
-                          ),
+                          child: _saving
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                                  ),
+                                )
+                              : TextWidget(
+                                  text: 'Save',
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  isBold: true,
+                                ),
                         ),
                       ),
 
@@ -270,13 +345,4 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
     );
   }
 
-  static void show(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (context) => const PostEventBottomSheet(),
-    );
-  }
 }

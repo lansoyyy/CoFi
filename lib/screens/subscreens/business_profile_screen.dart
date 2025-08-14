@@ -168,7 +168,17 @@ class BusinessProfileScreen extends StatelessWidget {
                         Expanded(
                           child: GestureDetector(
                             onTap: () {
-                              MyEventsBottomSheet.show(context);
+                              if (shopId != null && shopId.isNotEmpty) {
+                                MyEventsBottomSheet.show(context,
+                                    shopId: shopId);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Please create or select a shop first.'),
+                                  ),
+                                );
+                              }
                             },
                             child: _buildSectionCard(
                               title: 'Events',
@@ -187,14 +197,17 @@ class BusinessProfileScreen extends StatelessWidget {
                         Expanded(
                           child: GestureDetector(
                             onTap: () {
-                              showModalBottomSheet(
-                                context: context,
-                                backgroundColor: Colors.transparent,
-                                isScrollControlled: true,
-                                useSafeArea: true,
-                                builder: (context) =>
-                                    const PostEventBottomSheet(),
-                              );
+                              if (shopId != null && shopId.isNotEmpty) {
+                                PostEventBottomSheet.show(context,
+                                    shopId: shopId);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Please create or select a shop first.'),
+                                  ),
+                                );
+                              }
                             },
                             child: _buildSectionCard(
                               title: 'Post an Event',
@@ -205,7 +218,18 @@ class BusinessProfileScreen extends StatelessWidget {
                         const SizedBox(width: 16),
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => MyJobsBottomSheet.show(context),
+                            onTap: () {
+                              if (shopId != null && shopId.isNotEmpty) {
+                                MyJobsBottomSheet.show(context, shopId: shopId);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Please create or select a shop first.'),
+                                  ),
+                                );
+                              }
+                            },
                             child: _buildSectionCard(
                               title: 'Jobs',
                               subtitle: 'Show my submitted jobs',
@@ -223,16 +247,17 @@ class BusinessProfileScreen extends StatelessWidget {
                         Expanded(
                           child: GestureDetector(
                             onTap: () {
-                              Navigator.pop(context);
-                              // Immediately show the post job form
-                              showModalBottomSheet(
-                                context: context,
-                                backgroundColor: Colors.transparent,
-                                isScrollControlled: true,
-                                useSafeArea: true,
-                                builder: (newContext) =>
-                                    const PostJobBottomSheet(),
-                              );
+                              if (shopId != null && shopId.isNotEmpty) {
+                                PostJobBottomSheet.show(context,
+                                    shopId: shopId);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Please create or select a shop first.'),
+                                  ),
+                                );
+                              }
                             },
                             child: _buildSectionCard(
                               title: 'Post a Job',

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
-import '../../widgets/my_events_bottom_sheet.dart';
-import '../../widgets/my_jobs_bottom_sheet.dart';
 
 class BusinessScreen extends StatelessWidget {
   const BusinessScreen({super.key});
@@ -106,8 +104,11 @@ class BusinessScreen extends StatelessWidget {
 
                 // Menu Items
                 _buildMenuItem('Claim shop', Icons.chevron_right),
-                _buildClickableMenuItem('Post a job', Icons.chevron_right,
-                    () => MyJobsBottomSheet.show(context)),
+                _buildClickableMenuItem(
+                  'Post a job',
+                  Icons.chevron_right,
+                  () => Navigator.pushNamed(context, '/businessProfile'),
+                ),
 
                 const SizedBox(height: 32),
 
@@ -129,8 +130,11 @@ class BusinessScreen extends StatelessWidget {
                     onTap: () => Navigator.pushNamed(context, '/submitShop'),
                     child:
                         _buildMenuItem('Submit a shop', Icons.chevron_right)),
-                _buildClickableMenuItem('Post an event', Icons.chevron_right,
-                    () => MyEventsBottomSheet.show(context)),
+                _buildClickableMenuItem(
+                  'Post an event',
+                  Icons.chevron_right,
+                  () => Navigator.pushNamed(context, '/businessProfile'),
+                ),
                 _buildMenuItem(
                     'Suggest app functionality', Icons.chevron_right),
 

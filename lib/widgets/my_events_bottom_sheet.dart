@@ -1,10 +1,13 @@
 import 'package:cofi/widgets/post_event_bottom_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/colors.dart';
 import '../widgets/text_widget.dart';
 
 class MyEventsBottomSheet extends StatelessWidget {
-  const MyEventsBottomSheet({super.key});
+  const MyEventsBottomSheet({super.key, required this.shopId});
+
+  final String shopId;
 
   @override
   Widget build(BuildContext context) {
@@ -44,14 +47,7 @@ class MyEventsBottomSheet extends StatelessWidget {
                   GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
-                      // Immediately show the post event form
-                      showModalBottomSheet(
-                        context: context,
-                        backgroundColor: Colors.transparent,
-                        isScrollControlled: true,
-                        useSafeArea: true,
-                        builder: (newContext) => const PostEventBottomSheet(),
-                      );
+                      PostEventBottomSheet.show(context, shopId: shopId);
                     },
                     child: Icon(
                       Icons.add,
@@ -67,28 +63,78 @@ class MyEventsBottomSheet extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    // Coffee Day Event
-                    _buildEventItem(
-                      title: 'Coffee Day',
-                      status: 'Approved',
-                      statusColor: Colors.green,
-                      participants: '25 Participants',
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Sample Event
-                    _buildEventItem(
-                      title: 'Sample Event',
-                      status: 'Pending for approval',
-                      statusColor: Colors.orange,
-                      participants: null,
-                    ),
-
-                    const Spacer(),
-                  ],
+                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
+                      .collection('shops')
+                      .doc(shopId)
+                      .collection('events')
+                      .orderBy('createdAt', descending: true)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: TextWidget(
+                          text: 'Failed to load events',
+                          fontSize: 14,
+                          color: Colors.red,
+                        ),
+                      );
+                    }
+                    final docs = snapshot.data?.docs ?? [];
+                    if (docs.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextWidget(
+                              text: 'No events yet',
+                              fontSize: 16,
+                              color: Colors.white,
+                              isBold: true,
+                            ),
+                            const SizedBox(height: 8),
+                            TextWidget(
+                              text: 'Tap + to post your first event',
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return ListView.separated(
+                      itemCount: docs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 16),
+                      itemBuilder: (context, index) {
+                        final data = docs[index].data();
+                        final title = (data['title'] as String?) ?? 'Untitled';
+                        final status = (data['status'] as String?) ?? 'pending';
+                        final participants = data['participantsCount'] is int
+                            ? data['participantsCount'] as int
+                            : 0;
+                        final statusColor = status.toLowerCase() == 'approved'
+                            ? Colors.green
+                            : status.toLowerCase() == 'rejected'
+                                ? Colors.red
+                                : Colors.orange;
+                        return _buildEventItem(
+                          title: title,
+                          status: status == 'pending'
+                              ? 'Pending for approval'
+                              : status[0].toUpperCase() + status.substring(1),
+                          statusColor: statusColor,
+                          participants: participants > 0
+                              ? '$participants Participants'
+                              : null,
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ),
@@ -172,13 +218,13 @@ class MyEventsBottomSheet extends StatelessWidget {
     );
   }
 
-  static void show(BuildContext context) {
+  static void show(BuildContext context, {required String shopId}) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (context) => const MyEventsBottomSheet(),
+      builder: (context) => MyEventsBottomSheet(shopId: shopId),
     );
   }
 }

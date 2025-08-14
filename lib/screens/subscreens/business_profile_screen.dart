@@ -11,6 +11,13 @@ class BusinessProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final Map<String, dynamic>? shop =
+        args is Map<String, dynamic> ? args : null;
+    final String shopName =
+        (shop?['name'] as String?)?.trim().isNotEmpty == true
+            ? (shop!['name'] as String)
+            : 'My Shop';
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -72,7 +79,7 @@ class BusinessProfileScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           TextWidget(
-                            text: 'Fiend Coffee Club',
+                            text: shopName,
                             fontSize: 18,
                             color: Colors.white,
                             isBold: true,

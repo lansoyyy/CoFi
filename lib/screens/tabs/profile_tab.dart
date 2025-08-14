@@ -1,5 +1,7 @@
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../widgets/text_widget.dart';
 
 class ProfileTab extends StatelessWidget {
@@ -126,52 +128,86 @@ class ProfileTab extends StatelessWidget {
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.pushNamed(context, '/submitShop');
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(32),
-                  ),
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 16),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: const BoxDecoration(
-                            color: primary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.local_cafe,
-                                color: Colors.white, size: 28),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextWidget(
-                          text: 'Submit A Shop',
-                          fontSize: 18,
-                          color: Colors.white,
-                          isBold: true,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.arrow_forward_ios,
-                            color: Colors.white, size: 22),
-                        onPressed: () {
+              child: Builder(
+                builder: (context) {
+                  final user = FirebaseAuth.instance.currentUser;
+                  final stream = user == null
+                      ? null
+                      : FirebaseFirestore.instance
+                          .collection('shops')
+                          .where('posterId', isEqualTo: user.uid)
+                          .limit(1)
+                          .snapshots();
+
+                  return StreamBuilder<QuerySnapshot>(
+                    stream: stream,
+                    builder: (context, snapshot) {
+                      final hasShop =
+                          snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+                      final label = hasShop ? 'View Shop' : 'Submit A Shop';
+                      void navigate() {
+                        if (hasShop) {
+                          final doc = snapshot.data!.docs.first;
+                          final data = doc.data() as Map<String, dynamic>;
+                          Navigator.pushNamed(
+                            context,
+                            '/businessProfile',
+                            arguments: {
+                              ...data,
+                              'id': doc.id,
+                            },
+                          );
+                        } else {
                           Navigator.pushNamed(context, '/submitShop');
-                        },
-                      ),
-                    ],
-                  ),
-                ),
+                        }
+                      }
+
+                      return GestureDetector(
+                        onTap: navigate,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(32),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 16),
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: const BoxDecoration(
+                                    color: primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Center(
+                                    child: Icon(Icons.local_cafe,
+                                        color: Colors.white, size: 28),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: TextWidget(
+                                  text: label,
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                  isBold: true,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.arrow_forward_ios,
+                                    color: Colors.white, size: 22),
+                                onPressed: navigate,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
             const SizedBox(height: 32),

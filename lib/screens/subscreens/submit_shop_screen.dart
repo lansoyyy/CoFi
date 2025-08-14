@@ -127,13 +127,21 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
         'menu': [],
       };
 
-      await FirebaseFirestore.instance.collection('shops').add(data);
+      final ref =
+          await FirebaseFirestore.instance.collection('shops').add(data);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Shop submitted successfully.')),
         );
-        Navigator.pushNamed(context, '/business');
+        Navigator.pushNamed(
+          context,
+          '/businessProfile',
+          arguments: {
+            'id': ref.id,
+            'name': name,
+          },
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

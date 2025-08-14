@@ -2,9 +2,11 @@ import 'package:cofi/widgets/my_events_bottom_sheet.dart';
 import 'package:cofi/widgets/my_jobs_bottom_sheet.dart';
 import 'package:cofi/widgets/post_job_bottom_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 import '../../widgets/post_event_bottom_sheet.dart';
+import 'reviews_screen.dart';
 
 class BusinessProfileScreen extends StatelessWidget {
   const BusinessProfileScreen({super.key});
@@ -18,6 +20,10 @@ class BusinessProfileScreen extends StatelessWidget {
         (shop?['name'] as String?)?.trim().isNotEmpty == true
             ? (shop!['name'] as String)
             : 'My Shop';
+    final String? shopId =
+        (shop?['id'] is String && (shop?['id'] as String).trim().isNotEmpty)
+            ? shop!['id'] as String
+            : null;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -45,55 +51,68 @@ class BusinessProfileScreen extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 // Business Profile Card
-                Row(
-                  children: [
-                    // Business Logo
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: primary,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Center(
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.local_cafe,
-                            color: Colors.red,
-                            size: 16,
+                GestureDetector(
+                  onTap: () {
+                    if (shopId != null && shopId.isNotEmpty) {
+                      Navigator.pushNamed(
+                        context,
+                        '/submitShop',
+                        arguments: {'editShopId': shopId},
+                      );
+                    } else {
+                      Navigator.pushNamed(context, '/submitShop');
+                    }
+                  },
+                  child: Row(
+                    children: [
+                      // Business Logo
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: primary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.local_cafe,
+                              color: Colors.red,
+                              size: 16,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
+                      const SizedBox(width: 16),
 
-                    // Business Info
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          TextWidget(
-                            text: shopName,
-                            fontSize: 18,
-                            color: Colors.white,
-                            isBold: true,
-                          ),
-                          const SizedBox(height: 4),
-                          TextWidget(
-                            text: 'Tap to Manage profile',
-                            fontSize: 14,
-                            color: Colors.grey[400]!,
-                          ),
-                        ],
+                      // Business Info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextWidget(
+                              text: shopName,
+                              fontSize: 18,
+                              color: Colors.white,
+                              isBold: true,
+                            ),
+                            const SizedBox(height: 4),
+                            TextWidget(
+                              text: 'Tap to Manage profile',
+                              fontSize: 14,
+                              color: Colors.grey[400]!,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
 
                 const SizedBox(height: 40),
@@ -107,12 +126,42 @@ class BusinessProfileScreen extends StatelessWidget {
                         Expanded(
                           child: GestureDetector(
                             onTap: () {
-                              Navigator.pushNamed(context, '/yourReviews');
+                              final fallback =
+                                  (shop?['reviews'] as List?) ?? const [];
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ReviewsScreen(
+                                    shopId: shopId,
+                                    fallbackReviews: fallback,
+                                  ),
+                                ),
+                              );
                             },
-                            child: _buildSectionCard(
-                              title: 'Reviews',
-                              subtitle: 'Show my shops reviews',
-                            ),
+                            child: (shopId != null && shopId.isNotEmpty)
+                                ? StreamBuilder<
+                                    QuerySnapshot<Map<String, dynamic>>>(
+                                    stream: FirebaseFirestore.instance
+                                        .collection('shops')
+                                        .doc(shopId)
+                                        .collection('reviews')
+                                        .snapshots(),
+                                    builder: (context, snapshot) {
+                                      final count =
+                                          snapshot.data?.docs.length ?? 0;
+                                      final subtitle = count == 0
+                                          ? 'No reviews yet'
+                                          : '$count Reviews';
+                                      return _buildSectionCard(
+                                        title: 'Reviews',
+                                        subtitle: subtitle,
+                                      );
+                                    },
+                                  )
+                                : _buildSectionCard(
+                                    title: 'Reviews',
+                                    subtitle: 'Show my shops reviews',
+                                  ),
                           ),
                         ),
                         const SizedBox(width: 16),

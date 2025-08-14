@@ -38,6 +38,10 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
 
   bool _isSaving = false;
   User? _currentUser;
+  bool _isEditing = false;
+  String? _editShopId;
+  bool _isLoadingExisting = false;
+  bool _didLoadArgs = false;
 
   // Schedule state: each day has isOpen + open/close times (TimeOfDay?)
   final List<MapEntry<String, String>> _days = const [
@@ -63,6 +67,80 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
           'close': null, // TimeOfDay?
         }
     };
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didLoadArgs) return;
+    _didLoadArgs = true;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map && args['editShopId'] is String) {
+      _isEditing = true;
+      _editShopId = args['editShopId'] as String;
+      _loadExistingShop(_editShopId!);
+    }
+  }
+
+  Future<void> _loadExistingShop(String id) async {
+    setState(() => _isLoadingExisting = true);
+    try {
+      final snap = await FirebaseFirestore.instance.collection('shops').doc(id).get();
+      final data = snap.data() as Map<String, dynamic>?;
+      if (data == null) return;
+
+      shopNameController.text = (data['name'] as String?) ?? '';
+      addressController.text = (data['address'] as String?) ?? '';
+      aboutController.text = (data['about'] as String?) ?? '';
+
+      final contacts = (data['contacts'] as Map<String, dynamic>?) ?? {};
+      instagramController.text = (contacts['instagram'] as String?) ?? '';
+      facebookController.text = (contacts['facebook'] as String?) ?? '';
+      tiktokController.text = (contacts['tiktok'] as String?) ?? '';
+      emailController.text = (contacts['email'] as String?) ?? '';
+      websiteController.text = (contacts['website'] as String?) ?? '';
+      phoneController.text = (contacts['phone'] as String?) ?? '';
+
+      // Tags
+      final tags = ((data['tags'] as List?)?.cast<String>()) ?? <String>[];
+      // Reset defaults then mark present tags
+      selectedTags = {
+        for (final entry in selectedTags.entries) entry.key: false,
+      };
+      for (final t in tags) {
+        if (!selectedTags.containsKey(t)) {
+          selectedTags[t] = true; // include unknown tag to preserve
+        } else {
+          selectedTags[t] = true;
+        }
+      }
+
+      // Schedule
+      final sched = (data['schedule'] as Map<String, dynamic>?) ?? {};
+      for (final d in _days) {
+        final dayKey = d.key;
+        final m = (sched[dayKey] as Map<String, dynamic>?) ?? {};
+        _schedule[dayKey] = {
+          'isOpen': (m['isOpen'] as bool?) ?? false,
+          'open': _parseTimeOfDay(m['open'] as String?),
+          'close': _parseTimeOfDay(m['close'] as String?),
+        };
+      }
+    } catch (_) {
+      // ignore, basic UX handled by unchanged fields
+    } finally {
+      if (mounted) setState(() => _isLoadingExisting = false);
+    }
+  }
+
+  TimeOfDay? _parseTimeOfDay(String? s) {
+    if (s == null || s.trim().isEmpty) return null;
+    final parts = s.split(':');
+    if (parts.length != 2) return null;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return null;
+    return TimeOfDay(hour: h, minute: m);
   }
 
   List<String> _selectedTagsList() {
@@ -99,49 +177,90 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
               'email': user.email,
             };
 
-      final data = {
-        'name': name,
-        'address': address,
-        'about': about,
-        'contacts': {
-          'instagram': instagramController.text.trim(),
-          'facebook': facebookController.text.trim(),
-          'tiktok': tiktokController.text.trim(),
-          'email': emailController.text.trim(),
-          'website': websiteController.text.trim(),
-          'phone': phoneController.text.trim(),
-        },
-        // Daily schedule from UI state
-        'schedule': _buildSchedulePayload(),
-        // Skip uploading logos and gallery images for now
-        'logoUrl': null,
-        'gallery': <String>[],
-        'tags': _selectedTagsList(),
-        'postedBy': postedBy,
-        'posterId': user?.uid,
-        'postedAt': FieldValue.serverTimestamp(),
-        'reviews': [],
-        'ratings': 0,
-        'ratingCount': 0,
-        'visits': [],
-        'menu': [],
-      };
-
-      final ref =
-          await FirebaseFirestore.instance.collection('shops').add(data);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Shop submitted successfully.')),
-        );
-        Navigator.pushNamed(
-          context,
-          '/businessProfile',
-          arguments: {
-            'id': ref.id,
-            'name': name,
+      if (_isEditing && _editShopId != null && _editShopId!.isNotEmpty) {
+        // Update existing shop
+        final updateData = {
+          'name': name,
+          'address': address,
+          'about': about,
+          'contacts': {
+            'instagram': instagramController.text.trim(),
+            'facebook': facebookController.text.trim(),
+            'tiktok': tiktokController.text.trim(),
+            'email': emailController.text.trim(),
+            'website': websiteController.text.trim(),
+            'phone': phoneController.text.trim(),
           },
-        );
+          'schedule': _buildSchedulePayload(),
+          'tags': _selectedTagsList(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+
+        await FirebaseFirestore.instance
+            .collection('shops')
+            .doc(_editShopId)
+            .update(updateData);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Shop updated successfully.')),
+          );
+          Navigator.pushNamed(
+            context,
+            '/businessProfile',
+            arguments: {
+              'id': _editShopId,
+              'name': name,
+            },
+          );
+        }
+      } else {
+        // Create new shop
+        final data = {
+          'name': name,
+          'address': address,
+          'about': about,
+          'contacts': {
+            'instagram': instagramController.text.trim(),
+            'facebook': facebookController.text.trim(),
+            'tiktok': tiktokController.text.trim(),
+            'email': emailController.text.trim(),
+            'website': websiteController.text.trim(),
+            'phone': phoneController.text.trim(),
+          },
+          // Daily schedule from UI state
+          'schedule': _buildSchedulePayload(),
+          // Skip uploading logos and gallery images for now
+          'logoUrl': null,
+          'gallery': <String>[],
+          'tags': _selectedTagsList(),
+          'postedBy': postedBy,
+          'posterId': user?.uid,
+          'postedAt': FieldValue.serverTimestamp(),
+          'reviews': [],
+          'ratings': 0,
+          'ratingCount': 0,
+          'visits': [],
+          'menu': [],
+        };
+
+        final ref = await FirebaseFirestore.instance
+            .collection('shops')
+            .add(data);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Shop submitted successfully.')),
+          );
+          Navigator.pushNamed(
+            context,
+            '/businessProfile',
+            arguments: {
+              'id': ref.id,
+              'name': name,
+            },
+          );
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -164,9 +283,23 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         centerTitle: false,
+        title: TextWidget(
+          text: _isEditing ? 'Edit Shop' : 'Submit Shop',
+          fontSize: 16,
+          color: Colors.white,
+          isBold: true,
+        ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: _isLoadingExisting
+            ? const Center(
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            : SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,7 +588,7 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
                           ),
                         )
                       : TextWidget(
-                          text: 'Save',
+                          text: _isEditing ? 'Update' : 'Save',
                           fontSize: 16,
                           color: Colors.white,
                           isBold: true,

@@ -1,9 +1,69 @@
 import 'package:cofi/utils/colors.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../widgets/text_widget.dart';
 
-class LogVisitScreen extends StatelessWidget {
-  const LogVisitScreen({Key? key}) : super(key: key);
+class LogVisitScreen extends StatefulWidget {
+  final String shopId;
+  final String shopName;
+  final String shopAddress;
+
+  const LogVisitScreen(
+      {Key? key,
+      required this.shopId,
+      required this.shopName,
+      required this.shopAddress})
+      : super(key: key);
+
+  @override
+  State<LogVisitScreen> createState() => _LogVisitScreenState();
+}
+
+class _LogVisitScreenState extends State<LogVisitScreen> {
+  final _noteCtrl = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _noteCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please sign in to log a visit.')));
+        return;
+      }
+      final data = {
+        'userId': user.uid,
+        'userEmail': user.email,
+        'note': _noteCtrl.text.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+      await FirebaseFirestore.instance
+          .collection('shops')
+          .doc(widget.shopId)
+          .collection('visits')
+          .add(data);
+
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Visit logged')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Failed: $e')));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,13 +108,13 @@ class LogVisitScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     TextWidget(
-                      text: 'Fiend Coffee Club',
+                      text: widget.shopName,
                       fontSize: 16,
                       color: Colors.white,
                       isBold: true,
                     ),
                     TextWidget(
-                      text: 'Davao City',
+                      text: widget.shopAddress,
                       fontSize: 14,
                       color: Colors.white70,
                     ),
@@ -72,6 +132,7 @@ class LogVisitScreen extends StatelessWidget {
             const SizedBox(height: 8),
             TextField(
               maxLines: 5,
+              controller: _noteCtrl,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 filled: true,
@@ -88,7 +149,7 @@ class LogVisitScreen extends StatelessWidget {
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: _submitting ? null : _submit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primary,
                   shape: RoundedRectangleBorder(
@@ -96,7 +157,7 @@ class LogVisitScreen extends StatelessWidget {
                   ),
                 ),
                 child: TextWidget(
-                  text: 'Submit',
+                  text: _submitting ? 'Submitting...' : 'Submit',
                   fontSize: 16,
                   color: Colors.white,
                 ),

@@ -4,7 +4,11 @@ import '../../widgets/text_widget.dart';
 import 'review_shop_screen.dart';
 
 class WriteReviewScreen extends StatelessWidget {
-  const WriteReviewScreen({Key? key}) : super(key: key);
+  final String shopId;
+  final String shopName;
+  final String shopAddress;
+
+  const WriteReviewScreen({Key? key, required this.shopId, required this.shopName, required this.shopAddress}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -49,13 +53,13 @@ class WriteReviewScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     TextWidget(
-                      text: 'Fiend Coffee Club',
+                      text: shopName,
                       fontSize: 16,
                       color: Colors.white,
                       isBold: true,
                     ),
                     TextWidget(
-                      text: 'Davao City',
+                      text: shopAddress,
                       fontSize: 14,
                       color: Colors.white70,
                     ),
@@ -103,7 +107,11 @@ class WriteReviewScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ReviewShopScreen(),
+                        builder: (context) => ReviewShopScreen(
+                          shopId: shopId,
+                          shopName: shopName,
+                          shopAddress: shopAddress,
+                        ),
                       ),
                     );
                   },

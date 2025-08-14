@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 
@@ -34,6 +36,114 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
     'Study-Friendly': false,
   };
 
+  bool _isSaving = false;
+  User? _currentUser;
+
+  // Schedule state: each day has isOpen + open/close times (TimeOfDay?)
+  final List<MapEntry<String, String>> _days = const [
+    MapEntry('monday', 'Monday'),
+    MapEntry('tuesday', 'Tuesday'),
+    MapEntry('wednesday', 'Wednesday'),
+    MapEntry('thursday', 'Thursday'),
+    MapEntry('friday', 'Friday'),
+    MapEntry('saturday', 'Saturday'),
+    MapEntry('sunday', 'Sunday'),
+  ];
+  late Map<String, Map<String, dynamic>> _schedule;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUser = FirebaseAuth.instance.currentUser;
+    _schedule = {
+      for (final d in _days)
+        d.key: {
+          'isOpen': false,
+          'open': null, // TimeOfDay?
+          'close': null, // TimeOfDay?
+        }
+    };
+  }
+
+  List<String> _selectedTagsList() {
+    return selectedTags.entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
+  }
+
+  Future<void> _submitShop() async {
+    final name = shopNameController.text.trim();
+    final address = addressController.text.trim();
+    final about = aboutController.text.trim();
+
+    if (name.isEmpty || address.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in shop name and address.')),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      final user = _currentUser;
+      final postedBy = user == null
+          ? {
+              'uid': null,
+              'displayName': null,
+              'email': null,
+            }
+          : {
+              'uid': user.uid,
+              'displayName': user.displayName,
+              'email': user.email,
+            };
+
+      final data = {
+        'name': name,
+        'address': address,
+        'about': about,
+        'contacts': {
+          'instagram': instagramController.text.trim(),
+          'facebook': facebookController.text.trim(),
+          'tiktok': tiktokController.text.trim(),
+          'email': emailController.text.trim(),
+          'website': websiteController.text.trim(),
+          'phone': phoneController.text.trim(),
+        },
+        // Daily schedule from UI state
+        'schedule': _buildSchedulePayload(),
+        // Skip uploading logos and gallery images for now
+        'logoUrl': null,
+        'gallery': <String>[],
+        'tags': _selectedTagsList(),
+        'postedBy': postedBy,
+        'posterId': user?.uid,
+        'postedAt': FieldValue.serverTimestamp(),
+        'reviews': [],
+        'ratings': 0,
+        'ratingCount': 0,
+        'visits': [],
+        'menu': [],
+      };
+
+      await FirebaseFirestore.instance.collection('shops').add(data);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Shop submitted successfully.')),
+        );
+        Navigator.pushNamed(context, '/business');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to submit: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -54,6 +164,28 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 16),
+
+              // Posting as indicator
+              if (_currentUser != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.account_circle,
+                          color: Colors.white70, size: 18),
+                      const SizedBox(width: 8),
+                      TextWidget(
+                        text: 'Posting as ' +
+                            (_currentUser!.displayName?.isNotEmpty == true
+                                ? _currentUser!.displayName!
+                                : (_currentUser!.email ?? 'Anonymous')),
+                        fontSize: 13,
+                        color: Colors.white70,
+                        isBold: false,
+                      ),
+                    ],
+                  ),
+                ),
 
               // Shop Logo Section
               Row(
@@ -208,7 +340,7 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
 
               // About Me
               TextWidget(
-                text: 'About Me',
+                text: 'About the Shop',
                 fontSize: 16,
                 color: Colors.white,
                 isBold: true,
@@ -285,6 +417,11 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
                   return _buildTag(tag, selectedTags[tag]!);
                 }).toList(),
               ),
+              const SizedBox(height: 24),
+
+              // Daily Schedule Section
+              _buildScheduleSection(),
+
               const SizedBox(height: 40),
 
               // Save Button
@@ -292,22 +429,29 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Handle save and navigate to business screen
-                    Navigator.pushNamed(context, '/business');
-                  },
+                  onPressed: _isSaving ? null : _submitShop,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(100),
                     ),
                   ),
-                  child: TextWidget(
-                    text: 'Save',
-                    fontSize: 16,
-                    color: Colors.white,
-                    isBold: true,
-                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : TextWidget(
+                          text: 'Save',
+                          fontSize: 16,
+                          color: Colors.white,
+                          isBold: true,
+                        ),
                 ),
               ),
               const SizedBox(height: 32),
@@ -316,6 +460,171 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
         ),
       ),
     );
+  }
+
+  Map<String, dynamic> _buildSchedulePayload() {
+    String _fmt(TimeOfDay? t) => t == null
+        ? ''
+        : '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+    return {
+      for (final d in _days)
+        d.key: {
+          'open': _fmt(_schedule[d.key]!['open'] as TimeOfDay?),
+          'close': _fmt(_schedule[d.key]!['close'] as TimeOfDay?),
+          'isOpen': _schedule[d.key]!['isOpen'] as bool,
+        }
+    };
+  }
+
+  Widget _buildScheduleSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextWidget(
+          text: 'Daily Schedule',
+          fontSize: 16,
+          color: Colors.white,
+          isBold: true,
+        ),
+        const SizedBox(height: 12),
+        ..._days.map((d) => _buildDayRow(d.key, d.value)).toList(),
+      ],
+    );
+  }
+
+  Widget _buildDayRow(String key, String label) {
+    final isOpen = (_schedule[key]!['isOpen'] as bool);
+    final TimeOfDay? open = _schedule[key]!['open'] as TimeOfDay?;
+    final TimeOfDay? close = _schedule[key]!['close'] as TimeOfDay?;
+
+    String _fmt(TimeOfDay? t) => t == null
+        ? '--:--'
+        : '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              TextWidget(
+                text: label,
+                fontSize: 14,
+                color: Colors.white,
+                isBold: true,
+              ),
+              Switch(
+                value: isOpen,
+                activeColor: primary,
+                onChanged: (val) {
+                  setState(() {
+                    _schedule[key]!['isOpen'] = val;
+                  });
+                },
+              )
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTimePickerTile(
+                  label: 'Open',
+                  value: _fmt(open),
+                  enabled: isOpen,
+                  onTap: () => _pickTime(key, 'open'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTimePickerTile(
+                  label: 'Close',
+                  value: _fmt(close),
+                  enabled: isOpen,
+                  onTap: () => _pickTime(key, 'close'),
+                ),
+              ),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimePickerTile({
+    required String label,
+    required String value,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    final tileColor = enabled ? Colors.grey[850] : Colors.grey[800];
+    final textColor = enabled ? Colors.white : Colors.white54;
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        height: 46,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: tileColor,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[700]!.withOpacity(0.4)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            TextWidget(
+              text: label,
+              fontSize: 13,
+              color: textColor,
+              isBold: false,
+            ),
+            Row(
+              children: [
+                TextWidget(
+                  text: value,
+                  fontSize: 13,
+                  color: textColor,
+                  isBold: true,
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.access_time, color: textColor, size: 16),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickTime(String dayKey, String field) async {
+    final initial = TimeOfDay.now();
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: primary,
+              surface: Colors.grey[900]!,
+              onSurface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _schedule[dayKey]![field] = picked;
+      });
+    }
   }
 
   Widget _buildContactField({

@@ -1,22 +1,32 @@
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/text_widget.dart';
 
 class ReviewsScreen extends StatelessWidget {
-  const ReviewsScreen({Key? key}) : super(key: key);
+  final String? shopId;
+  final List? fallbackReviews;
+
+  const ReviewsScreen({Key? key, this.shopId, this.fallbackReviews})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final hasShopId = shopId != null && shopId!.isNotEmpty;
+    final query = hasShopId
+        ? FirebaseFirestore.instance
+            .collection('shops')
+            .doc(shopId)
+            .collection('reviews')
+            .orderBy('createdAt', descending: true)
+        : null;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
         title: TextWidget(
-          text: 'Reviews',
-          fontSize: 18,
-          color: Colors.white,
-          isBold: true,
-        ),
+            text: 'Reviews', fontSize: 18, color: Colors.white, isBold: true),
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.white),
           onPressed: () {
@@ -26,38 +36,93 @@ class ReviewsScreen extends StatelessWidget {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: TextWidget(
-              text: '8 Reviews',
-              fontSize: 14,
-              color: Colors.white,
+            child: hasShopId
+                ? StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: query!.snapshots(),
+                    builder: (context, snapshot) {
+                      final count = snapshot.data?.docs.length ?? 0;
+                      return TextWidget(
+                        text: '$count Reviews',
+                        fontSize: 14,
+                        color: Colors.white,
+                      );
+                    },
+                  )
+                : TextWidget(
+                    text: '${(fallbackReviews ?? const []).length} Reviews',
+                    fontSize: 14,
+                    color: Colors.white,
+                  ),
+          ),
+        ],
+      ),
+      body: hasShopId
+          ? StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: query!.snapshots(),
+              builder: (context, snapshot) {
+                final docs = snapshot.data?.docs ?? const [];
+                return ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  children: [
+                    const SizedBox(height: 16),
+                    if (docs.isEmpty)
+                      TextWidget(
+                        text: 'No reviews yet',
+                        fontSize: 14,
+                        color: Colors.white70,
+                      )
+                    else
+                      ...docs.map((d) {
+                        final m = d.data();
+                        final name =
+                            (m['authorName'] ?? m['name'] ?? 'Anonymous')
+                                .toString();
+                        final review =
+                            (m['text'] ?? m['comment'] ?? '').toString();
+                        final tags = (m['tags'] is List)
+                            ? (m['tags'] as List).cast<String>()
+                            : <String>[];
+                        return _buildReviewCard(
+                          name: name,
+                          review: review.isNotEmpty ? review : '—',
+                          tags: tags,
+                          imagePath: 'assets/images/review_placeholder.jpg',
+                        );
+                      }).toList(),
+                  ],
+                );
+              },
+            )
+          : ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              children: [
+                const SizedBox(height: 16),
+                if ((fallbackReviews ?? const []).isEmpty)
+                  TextWidget(
+                    text: 'No reviews yet',
+                    fontSize: 14,
+                    color: Colors.white70,
+                  )
+                else
+                  ...fallbackReviews!.map((r) {
+                    final m = (r is Map)
+                        ? r.cast<String, dynamic>()
+                        : <String, dynamic>{};
+                    final name = (m['authorName'] ?? m['name'] ?? 'Anonymous')
+                        .toString();
+                    final review = (m['text'] ?? m['comment'] ?? '').toString();
+                    final tags = (m['tags'] is List)
+                        ? (m['tags'] as List).cast<String>()
+                        : <String>[];
+                    return _buildReviewCard(
+                      name: name,
+                      review: review.isNotEmpty ? review : '—',
+                      tags: tags,
+                      imagePath: 'assets/images/review_placeholder.jpg',
+                    );
+                  }).toList(),
+              ],
             ),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        children: [
-          const SizedBox(height: 16),
-          _buildReviewCard(
-            name: 'Jeremy Juaton',
-            review: 'Very cozy coffee shop, worth visiting',
-            tags: ['Chill Hangout'],
-            imagePath: 'assets/images/review1.jpg',
-          ),
-          _buildReviewCard(
-            name: 'Princess Castillo',
-            review: 'Amazing Coffee shop',
-            tags: ['Off / Hangout', 'Study Vibes'],
-            imagePath: 'assets/images/review2.jpg',
-          ),
-          _buildReviewCard(
-            name: 'Kyle Cabanig',
-            review: 'Love the vibes >>',
-            tags: ['Business Meeting', 'Cozy / Chill'],
-            imagePath: 'assets/images/review3.jpg',
-          ),
-        ],
-      ),
     );
   }
 

@@ -54,6 +54,12 @@ class _SignupScreenState extends State<SignupScreen> {
         'email': email,
         'birthday': birthday,
         'commitment': false,
+        'uid': cred.user!.uid,
+        'displayName': '$first $last',
+        'address': 'Davao City',
+        'bookmarks': [],
+        'visited': [],
+        'reviews': [],
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
@@ -67,12 +73,13 @@ class _SignupScreenState extends State<SignupScreen> {
     } on FirebaseAuthException catch (e) {
       final msg = e.message ?? 'Sign up failed';
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(msg)));
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Something went wrong')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Something went wrong')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -109,24 +116,27 @@ class _SignupScreenState extends State<SignupScreen> {
                   _buildTextField(
                     'First name',
                     controller: _firstNameController,
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Required' : null,
                   ),
                   const SizedBox(height: 12),
                   _buildTextField(
                     'Last name',
                     controller: _lastNameController,
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Required' : null,
                   ),
                   const SizedBox(height: 12),
                   _buildTextField(
                     'Birthday (mm/dd/yyyy)',
                     hint:
                         'To sign up, you need to be at least 18. Your birthday won’t be shared with other people who use Cofi.',
-                    suffixIcon:
-                        const Icon(Icons.arrow_drop_down, color: Colors.white54),
+                    suffixIcon: const Icon(Icons.arrow_drop_down,
+                        color: Colors.white54),
                     readOnly: true,
                     controller: _birthdayController,
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Required' : null,
                     onTap: () async {
                       FocusScope.of(context).requestFocus(FocusNode());
                       final picked = await showDatePicker(
@@ -276,7 +286,8 @@ class _SignupScreenState extends State<SignupScreen> {
           ? const SizedBox(
               height: 22,
               width: 22,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.white),
             )
           : TextWidget(
               text: 'Agree and continue',

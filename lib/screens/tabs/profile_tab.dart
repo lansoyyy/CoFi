@@ -5,7 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../widgets/text_widget.dart';
 
 class ProfileTab extends StatelessWidget {
-  const ProfileTab({super.key});
+  final VoidCallback? onOpenExplore;
+  const ProfileTab({super.key, this.onOpenExplore});
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +248,7 @@ class ProfileTab extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: onOpenExplore,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primary,
                         padding: const EdgeInsets.symmetric(vertical: 16),

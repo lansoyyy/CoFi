@@ -1,13 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cofi/screens/subscreens/event_details_screen.dart';
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
 import '../../widgets/text_widget.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-
 import '../job_details_screen.dart';
-import 'package:flutter/material.dart';
-import '../../widgets/text_widget.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class CommunityTab extends StatelessWidget {
   const CommunityTab({super.key});
@@ -65,52 +61,92 @@ class CommunityTab extends StatelessWidget {
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const EventDetailsScreen(),
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: FirebaseFirestore.instance
+                    .collectionGroup('events')
+                    .orderBy('createdAt', descending: true)
+                    .limit(25)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    print(snapshot.error);
+                    return TextWidget(
+                      text: 'Failed to load events',
+                      fontSize: 14,
+                      color: Colors.redAccent,
+                    );
+                  }
+                  final docs = snapshot.data?.docs ?? [];
+                  DocumentSnapshot<Map<String, dynamic>>? todayDoc;
+                  for (final d in docs) {
+                    final data = d.data();
+                    if (_isEventToday(data)) {
+                      todayDoc = d;
+                      break;
+                    }
+                  }
+                  if (todayDoc == null) {
+                    return TextWidget(
+                      text: 'No events today',
+                      fontSize: 14,
+                      color: Colors.white60,
+                    );
+                  }
+                  final event = todayDoc.data()!;
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EventDetailsScreen(event: {
+                            ...event,
+                            'id': todayDoc!.id,
+                          }),
+                        ),
+                      );
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: Stack(
+                        children: [
+                          Container(
+                            height: 200,
+                            width: double.infinity,
+                            color: Colors.grey[800],
+                            child: const Center(
+                              child: Icon(Icons.image,
+                                  color: Colors.white38, size: 60),
+                            ),
+                          ),
+                          Positioned(
+                            left: 16,
+                            bottom: 24,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TextWidget(
+                                  text: (event['title'] ?? 'Event').toString(),
+                                  fontSize: 20,
+                                  color: Colors.white,
+                                  isBold: true,
+                                ),
+                                const SizedBox(height: 4),
+                                TextWidget(
+                                  text: _eventSubtitle(event),
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
-                  child: Stack(
-                    children: [
-                      Container(
-                        height: 200,
-                        width: double.infinity,
-                        color: Colors.grey[800],
-                        child: const Center(
-                          child: Icon(Icons.image,
-                              color: Colors.white38, size: 60),
-                        ),
-                      ),
-                      Positioned(
-                        left: 16,
-                        bottom: 24,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            TextWidget(
-                              text: 'Coffee Day',
-                              fontSize: 20,
-                              color: Colors.white,
-                              isBold: true,
-                            ),
-                            const SizedBox(height: 4),
-                            TextWidget(
-                              text: 'SAT, 5 JUL | 04:00 PM - 08:00 PM',
-                              fontSize: 14,
-                              color: Colors.white,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
             ),
             const SizedBox(height: 32),
@@ -126,103 +162,149 @@ class CommunityTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            ..._buildJobList(context),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: FirebaseFirestore.instance
+                    .collectionGroup('jobs')
+                    .orderBy('createdAt', descending: true)
+                    .limit(10)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    print(snapshot.error);
+                    return TextWidget(
+                      text: 'Failed to load jobs',
+                      fontSize: 14,
+                      color: Colors.redAccent,
+                    );
+                  }
+                  final docs = snapshot.data?.docs ?? [];
+                  if (docs.isEmpty) {
+                    return TextWidget(
+                      text: 'No jobs available',
+                      fontSize: 14,
+                      color: Colors.white60,
+                    );
+                  }
+                  return Column(
+                    children: docs.map((d) {
+                      final job = d.data();
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => JobDetailsScreen(job: {
+                                ...job,
+                                'id': d.id,
+                              }),
+                            ),
+                          );
+                        },
+                        child: _buildJobRow(context, job),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _buildJobList(context) {
-    final jobs = [
-      {
-        'cafe': 'Baoba Cafe',
-        'title': 'Barista Wanted - Join Us in Davao!',
-        'city': 'Davao City',
-      },
-      {
-        'cafe': 'SampleCafe',
-        'title': 'Barista',
-        'city': 'Davao City',
-      },
-      {
-        'cafe': 'NoNameCafe',
-        'title': 'Barista',
-        'city': 'Davao City',
-      },
-      {
-        'cafe': 'Unknown Cafe',
-        'title': 'Barista',
-        'city': 'Davao City',
-      },
-      {
-        'cafe': 'IDKCafe',
-        'title': 'Barista',
-        'city': 'Davao City',
-      },
-    ];
-    return jobs.map((job) {
-      return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const JobDetailsScreen(),
-              ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.only(left: 24, right: 24, bottom: 16),
-            child: Row(
+  Widget _buildJobRow(BuildContext context, Map<String, dynamic> job) {
+    final cafe =
+        (job['shopName'] ?? job['cafe'] ?? job['shopId'] ?? 'Coffee Shop')
+            .toString();
+    final title = (job['title'] ?? 'Job').toString();
+    final city = (job['city'] ?? 'Davao City').toString();
+    return Padding(
+      padding: const EdgeInsets.only(left: 0, right: 0, bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: const BoxDecoration(
+              color: primary,
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Icon(Icons.bookmark_border, color: Colors.white, size: 28),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: const BoxDecoration(
-                    color: primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.bookmark_border,
-                        color: Colors.white, size: 28),
-                  ),
+                // TextWidget(
+                //   text: cafe,
+                //   fontSize: 14,
+                //   color: Colors.white.withOpacity(0.7),
+                // ),
+                TextWidget(
+                  text: title,
+                  fontSize: 16,
+                  color: Colors.white,
+                  isBold: true,
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextWidget(
-                        text: job['cafe']!,
-                        fontSize: 14,
-                        color: Colors.white.withOpacity(0.7),
-                      ),
-                      TextWidget(
-                        text: job['title']!,
-                        fontSize: 16,
-                        color: Colors.white,
-                        isBold: true,
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on,
-                              color: Colors.white54, size: 16),
-                          const SizedBox(width: 4),
-                          TextWidget(
-                            text: job['city']!,
-                            fontSize: 13,
-                            color: Colors.white54,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on,
+                        color: Colors.white54, size: 16),
+                    const SizedBox(width: 4),
+                    TextWidget(
+                      text: city,
+                      fontSize: 13,
+                      color: Colors.white54,
+                    ),
+                  ],
                 ),
               ],
             ),
-          ));
-    }).toList();
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _isEventToday(Map<String, dynamic> data) {
+    DateTime? dt;
+    final sd = data['startDate'];
+    if (sd is Timestamp) {
+      dt = sd.toDate();
+    } else if (sd is String) {
+      dt = DateTime.tryParse(sd);
+    }
+    if (dt == null) {
+      final d = data['date'];
+      if (d is String) {
+        dt = DateTime.tryParse(d);
+      } else if (d is Timestamp) {
+        dt = d.toDate();
+      }
+    }
+    if (dt == null) return false;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final that = DateTime(dt.year, dt.month, dt.day);
+    return that == today;
+  }
+
+  String _eventSubtitle(Map<String, dynamic> event) {
+    final date = event['date'];
+    final start = event['startDate'];
+    if (date is String && date.isNotEmpty) return date;
+    if (start is String && start.isNotEmpty) return start;
+    return 'Today';
   }
 }

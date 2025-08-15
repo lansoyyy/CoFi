@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../widgets/text_widget.dart';
 import '../../../utils/colors.dart';
 
 class EventDetailsScreen extends StatelessWidget {
-  const EventDetailsScreen({Key? key}) : super(key: key);
+  final Map<String, dynamic>? event;
+  const EventDetailsScreen({Key? key, this.event}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final e = event ?? <String, dynamic>{};
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -45,7 +48,7 @@ class EventDetailsScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             TextWidget(
-                              text: 'Coffee Day',
+                              text: (e['title'] ?? 'Event').toString(),
                               fontSize: 24,
                               color: Colors.white,
                               isBold: true,
@@ -70,7 +73,7 @@ class EventDetailsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         TextWidget(
-                          text: 'SAT, 5 JUL | 04:00 PM - 08:00 PM',
+                          text: _formatEventDate(e),
                           fontSize: 14,
                           color: Colors.white70,
                         ),
@@ -85,8 +88,8 @@ class EventDetailsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         TextWidget(
-                          text:
-                              'Juna Ave. (Beside 6th Republic Resto) 8000\nDavao City, Philippines',
+                          text: (e['address'] ?? 'Address not specified')
+                              .toString(),
                           fontSize: 14,
                           color: Colors.white70,
                         ),
@@ -116,8 +119,8 @@ class EventDetailsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         TextWidget(
-                          text:
-                              'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse dictum nisl eget pretium laoreet. Vestibulum blandit at orci. Condimentum suscipit. Suspendisse lectus libero mauris cursus in, sit viverra mollis ipsum est molestie massa. Bibendum ut. Aliquam morbi placerat lorem dolor congue justo faucibus. Ac lacus mi laoreet, eget rutrum risus sit nec donec fringilla varius odio, vitae fringilla elit dapibus quis.',
+                          text: (e['about'] ?? 'No description provided')
+                              .toString(),
                           fontSize: 14,
                           color: Colors.white70,
                         ),
@@ -132,7 +135,7 @@ class EventDetailsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         TextWidget(
-                          text: 'SampleCafe@yopmail.com',
+                          text: (e['email'] ?? 'N/A').toString(),
                           fontSize: 14,
                           color: Colors.white,
                         ),
@@ -179,5 +182,25 @@ class EventDetailsScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatEventDate(Map<String, dynamic> e) {
+    // Try 'date' first, then 'startDate'. Accept String or Timestamp.
+    DateTime? dt;
+    final d = e['date'];
+    if (d is Timestamp) dt = d.toDate();
+    if (d is String && d.isNotEmpty) {
+      dt = DateTime.tryParse(d);
+    }
+    final sd = e['startDate'];
+    if (dt == null) {
+      if (sd is Timestamp) dt = sd.toDate();
+      if (sd is String && sd.isNotEmpty) dt = DateTime.tryParse(sd);
+    }
+    if (dt == null) return 'Date not set';
+    final day = dt.day.toString().padLeft(2, '0');
+    final mon = dt.month.toString().padLeft(2, '0');
+    final yr = dt.year.toString();
+    return '$yr-$mon-$day';
   }
 }

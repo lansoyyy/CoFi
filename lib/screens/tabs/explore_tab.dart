@@ -7,7 +7,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../widgets/text_widget.dart';
 
 class ExploreTab extends StatefulWidget {
-  const ExploreTab({super.key});
+  final VoidCallback? onOpenCommunity;
+  const ExploreTab({super.key, this.onOpenCommunity});
 
   @override
   State<ExploreTab> createState() => _ExploreTabState();
@@ -340,7 +341,9 @@ class _ExploreTabState extends State<ExploreTab> {
                 style: TextStyle(color: Colors.white70)),
           ),
         const SizedBox(height: 10),
-        GestureDetector(onTap: () {}, child: _buildCheckCommunityButton()),
+        GestureDetector(
+            onTap: () => widget.onOpenCommunity?.call(),
+            child: _buildCheckCommunityButton()),
         const SizedBox(height: 18),
         _sectionTitle('Shops'),
         const SizedBox(height: 10),

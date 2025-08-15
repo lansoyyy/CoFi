@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../widgets/text_widget.dart';
 import '../../utils/colors.dart';
 
 class JobDetailsScreen extends StatelessWidget {
-  const JobDetailsScreen({Key? key}) : super(key: key);
+  final Map<String, dynamic>? job;
+  const JobDetailsScreen({Key? key, this.job}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final j = job ?? <String, dynamic>{};
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -24,22 +28,23 @@ class JobDetailsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 16),
-            TextWidget(
-              text: 'SampleCafe',
-              fontSize: 14,
-              color: Colors.white70,
-            ),
+            // TextWidget(
+            //   text:
+            //       (j['shopName'] ?? j['cafe'] ?? j['shopId'] ?? 'Coffee Shop')
+            //           .toString(),
+            //   fontSize: 14,
+            //   color: Colors.white70,
+            // ),
             const SizedBox(height: 4),
             TextWidget(
-              text: 'Barista',
+              text: (j['title'] ?? 'Job').toString(),
               fontSize: 24,
               color: Colors.white,
               isBold: true,
             ),
             const SizedBox(height: 4),
             TextWidget(
-              text:
-                  'Juna Ave. (Beside 6th Republic Resto) 8000 Davao City, Philippines',
+              text: (j['address'] ?? 'Address not specified').toString(),
               fontSize: 13,
               color: Colors.white54,
               maxLines: 5,
@@ -55,7 +60,7 @@ class JobDetailsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             TextWidget(
-              text: 'Part Time',
+              text: (j['type'] ?? 'Unknown').toString(),
               fontSize: 14,
               color: Colors.white70,
             ),
@@ -70,7 +75,7 @@ class JobDetailsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             TextWidget(
-              text: 'TBD',
+              text: (j['pay'] ?? 'TBD').toString(),
               fontSize: 14,
               color: Colors.white70,
             ),
@@ -85,7 +90,7 @@ class JobDetailsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             TextWidget(
-              text: 'Experience',
+              text: (j['required'] ?? 'Not specified').toString(),
               fontSize: 14,
               color: Colors.white70,
             ),
@@ -100,7 +105,7 @@ class JobDetailsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             TextWidget(
-              text: 'Unknown',
+              text: _formatDate(j['startDate']),
               fontSize: 14,
               color: Colors.white70,
             ),
@@ -115,8 +120,7 @@ class JobDetailsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             TextWidget(
-              text:
-                  'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse dictum nisl eget pretium laoreet. Vestibulum blandit at orci condimentum suscipit. Suspendisse lectus libero mauris cursus in, sit viverra mollis ipsum est molestie massa. Bibendum ut. Aliquam morbi placerat lorem dolor congue justo faucibus. Ac lacus mi laoreet, eget rutrum risus sit nec donec fringilla varius odio, vitae fringilla elit dapibus quis.',
+              text: (j['description'] ?? 'No description provided').toString(),
               fontSize: 14,
               color: Colors.white70,
             ),
@@ -128,7 +132,7 @@ class JobDetailsScreen extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () => _applyNow(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -167,6 +171,78 @@ class JobDetailsScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  String _formatDate(dynamic v) {
+    if (v is Timestamp) {
+      final dt = v.toDate();
+      return _fmt(dt);
+    }
+    if (v is String && v.isNotEmpty) {
+      final dt = DateTime.tryParse(v);
+      if (dt != null) return _fmt(dt);
+    }
+    return 'Unknown';
+  }
+
+  String _fmt(DateTime dt) {
+    final day = dt.day.toString().padLeft(2, '0');
+    final mon = dt.month.toString().padLeft(2, '0');
+    final yr = dt.year.toString();
+    return '$yr-$mon-$day';
+  }
+
+  Future<void> _applyNow(BuildContext context) async {
+    final data = job ?? <String, dynamic>{};
+    // 1) Try opening a direct link if provided
+    final rawLink = (data['link'] ?? data['url'] ?? '').toString().trim();
+    if (rawLink.isNotEmpty) {
+      Uri? uri = Uri.tryParse(rawLink);
+      if (uri != null && (uri.scheme.isEmpty)) {
+        uri = Uri.tryParse('https://$rawLink');
+      }
+      if (uri != null) {
+        try {
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+            return;
+          }
+        } catch (_) {
+          // fall through to email
+        }
+      }
+    }
+
+    // 2) Fallback to composing an email
+    final email = (data['email'] ?? '').toString().trim();
+    if (email.isNotEmpty) {
+      final subject = 'Application: '
+          '${(data['title'] ?? 'Job').toString()}';
+      final body = 'Hi, I\'m interested in this role.';
+      final mailUri = Uri(
+        scheme: 'mailto',
+        path: email,
+        queryParameters: {
+          'subject': subject,
+          'body': body,
+        },
+      );
+      try {
+        if (await canLaunchUrl(mailUri)) {
+          await launchUrl(mailUri);
+          return;
+        }
+      } catch (_) {
+        // continue to snackbar
+      }
+    }
+
+    // 3) Nothing available
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No application link or email provided'),
       ),
     );
   }

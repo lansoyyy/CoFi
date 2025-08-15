@@ -18,13 +18,31 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _tabs = const [
-    ExploreTab(),
-    CommunityTab(),
-    // Placeholder widgets for Collections and Profile
-    CollectionsTab(),
-    ProfileTab()
-  ];
+  late final List<Widget> _tabs;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = [
+      ExploreTab(
+        onOpenCommunity: () {
+          setState(() {
+            _currentIndex = 1; // Community tab index
+          });
+        },
+      ),
+      const CommunityTab(),
+      // Placeholder widgets for Collections and Profile
+      const CollectionsTab(),
+      ProfileTab(
+        onOpenExplore: () {
+          setState(() {
+            _currentIndex = 0; // Explore tab index
+          });
+        },
+      ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {

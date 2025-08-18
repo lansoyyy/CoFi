@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 
@@ -27,54 +29,130 @@ class YourReviewsScreen extends StatelessWidget {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
-              TextWidget(
-                text: '3 Reviews',
-                fontSize: 16,
-                color: Colors.white70,
-              ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: ListView(
+          child: Builder(builder: (context) {
+            final user = FirebaseAuth.instance.currentUser;
+            if (user == null) {
+              return const Center(
+                child: Text(
+                  'Sign in to view your reviews',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              );
+            }
+
+            final reviewsStream = FirebaseFirestore.instance
+                .collectionGroup('reviews')
+                .where('userId', isEqualTo: user.uid)
+                .orderBy('createdAt', descending: true)
+                .snapshots();
+
+            return StreamBuilder<QuerySnapshot>(
+              stream: reviewsStream,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: primary),
+                  );
+                }
+                final docs = snapshot.data?.docs ?? [];
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildReviewCard(
-                      shopName: 'Juan Dela Cruz',
-                      rating: 5,
-                      timeAgo: '1 week ago',
-                      reviewText: 'nice',
-                      imagePath:
-                          'assets/images/cafe1.jpg', // You can add actual images
-                      hasImage: true,
-                    ),
                     const SizedBox(height: 16),
-                    _buildReviewCard(
-                      shopName: 'Juan Dela Cruz',
-                      rating: 5,
-                      timeAgo: '1 week ago',
-                      reviewText: 'Sarap!!',
-                      imagePath: 'assets/images/cafe2.jpg',
-                      hasImage: true,
+                    TextWidget(
+                      text:
+                          '${docs.length} Review${docs.length == 1 ? '' : 's'}',
+                      fontSize: 16,
+                      color: Colors.white70,
                     ),
-                    const SizedBox(height: 16),
-                    _buildReviewCard(
-                      shopName: 'Juan Dela Cruz',
-                      rating: 4,
-                      timeAgo: '1 week ago',
-                      reviewText: 'Anobio',
-                      imagePath: 'assets/images/cafe3.jpg',
-                      hasImage: true,
+                    const SizedBox(height: 24),
+                    Expanded(
+                      child: docs.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No reviews yet',
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: docs.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 16),
+                              itemBuilder: (context, index) {
+                                final d = docs[index];
+                                final shopId = d.reference.parent.parent?.id;
+                                final data = d.data() as Map<String, dynamic>?;
+                                final rating = (data?['rating'] as int?) ?? 0;
+                                final text = (data?['text'] as String?) ?? '';
+                                final tags = (data?['tags'] as List?)
+                                        ?.whereType<String>()
+                                        .toList() ??
+                                    const <String>[];
+                                final ts = data?['createdAt'];
+                                DateTime? createdAt;
+                                if (ts is Timestamp) createdAt = ts.toDate();
+                                final timeAgo = createdAt == null
+                                    ? ''
+                                    : _formatTimeAgo(createdAt);
+
+                                if (shopId == null) {
+                                  return _buildReviewCard(
+                                    shopName: 'Cafe',
+                                    rating: rating,
+                                    timeAgo: timeAgo,
+                                    reviewText: text,
+                                    tags: tags,
+                                    imagePath: '',
+                                    hasImage: true,
+                                  );
+                                }
+                                final shopRef = FirebaseFirestore.instance
+                                    .collection('shops')
+                                    .doc(shopId);
+                                return StreamBuilder<
+                                    DocumentSnapshot<Map<String, dynamic>>>(
+                                  stream: shopRef.snapshots(),
+                                  builder: (context, shopSnap) {
+                                    final shopName = (shopSnap.data
+                                            ?.data()?['name'] as String?) ??
+                                        'Cafe';
+                                    return _buildReviewCard(
+                                      shopName: shopName,
+                                      rating: rating,
+                                      timeAgo: timeAgo,
+                                      reviewText: text,
+                                      tags: tags,
+                                      imagePath: '',
+                                      hasImage: true,
+                                    );
+                                  },
+                                );
+                              },
+                            ),
                     ),
                   ],
-                ),
-              ),
-            ],
-          ),
+                );
+              },
+            );
+          }),
         ),
       ),
     );
+  }
+
+  String _formatTimeAgo(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inSeconds < 60) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) return '${diff.inHours} h ago';
+    if (diff.inDays < 7) return '${diff.inDays} d ago';
+    final weeks = (diff.inDays / 7).floor();
+    if (weeks < 5) return '$weeks w ago';
+    final months = (diff.inDays / 30).floor();
+    if (months < 12) return '$months mo ago';
+    final years = (diff.inDays / 365).floor();
+    return '$years y ago';
   }
 
   Widget _buildReviewCard({
@@ -82,6 +160,7 @@ class YourReviewsScreen extends StatelessWidget {
     required int rating,
     required String timeAgo,
     required String reviewText,
+    required List<String> tags,
     required String imagePath,
     required bool hasImage,
   }) {
@@ -142,37 +221,26 @@ class YourReviewsScreen extends StatelessWidget {
           const SizedBox(height: 12),
 
           // Review tags
-          Row(
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.grey[800],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: TextWidget(
-                  text: 'Coffee Quality',
-                  fontSize: 12,
-                  color: Colors.white70,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.grey[800],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: TextWidget(
-                  text: 'Value for Money',
-                  fontSize: 12,
-                  color: Colors.white70,
-                ),
-              ),
-            ],
-          ),
+          if (tags.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: tags.map((t) {
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[800],
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: TextWidget(
+                    text: t,
+                    fontSize: 12,
+                    color: Colors.white70,
+                  ),
+                );
+              }).toList(),
+            ),
           const SizedBox(height: 12),
 
           // Review text

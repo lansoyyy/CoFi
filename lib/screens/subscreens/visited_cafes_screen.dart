@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 
@@ -39,42 +41,83 @@ class VisitedCafesScreen extends StatelessWidget {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: ListView(
-            children: [
-              const SizedBox(height: 24),
-              _buildCafeCard(
-                cafeName: 'Daily dose',
-                cafeImage: 'assets/images/daily_dose.jpg',
-                backgroundColor: Colors.grey[700]!,
-              ),
-              const SizedBox(height: 16),
-              _buildCafeCard(
-                cafeName: 'Hidn Cafe',
-                cafeImage: 'assets/images/hidn_cafe.jpg',
-                backgroundColor: Colors.teal[600]!,
-              ),
-              const SizedBox(height: 16),
-              _buildCafeCard(
-                cafeName: 'Outlook Cafe',
-                cafeImage: 'assets/images/outlook_cafe.jpg',
-                backgroundColor: Colors.grey[600]!,
-              ),
-              const SizedBox(height: 16),
-              _buildCafeCard(
-                cafeName: 'Fiend Coffee Club',
-                cafeImage: 'assets/images/fiend_coffee.jpg',
-                backgroundColor: Colors.brown[600]!,
-              ),
-              const SizedBox(height: 16),
-              _buildCafeCard(
-                cafeName: 'Sample Cafe',
-                cafeImage: 'assets/images/sample_cafe.jpg',
-                backgroundColor: primary,
-                hasRedIcon: true,
-              ),
-              const SizedBox(height: 32),
-            ],
-          ),
+          child: Builder(builder: (context) {
+            final user = FirebaseAuth.instance.currentUser;
+            if (user == null) {
+              return const Center(
+                child: Text(
+                  'Sign in to view visited cafes',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              );
+            }
+
+            final visitsStream = FirebaseFirestore.instance
+                .collectionGroup('visits')
+                .where('userId', isEqualTo: user.uid)
+                .orderBy('createdAt', descending: true)
+                .snapshots();
+
+            return StreamBuilder<QuerySnapshot>(
+              stream: visitsStream,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: primary),
+                  );
+                }
+
+                final docs = snapshot.data?.docs ?? [];
+                // Dedupe by shopId; keep the latest createdAt for ordering
+                final Map<String, Timestamp> latestByShop = {};
+                for (final d in docs) {
+                  final shopId = d.reference.parent.parent?.id;
+                  if (shopId == null) continue;
+                  final createdAt = (d.get('createdAt') as Timestamp?);
+                  if (createdAt == null) continue;
+                  final prev = latestByShop[shopId];
+                  if (prev == null || createdAt.millisecondsSinceEpoch > prev.millisecondsSinceEpoch) {
+                    latestByShop[shopId] = createdAt;
+                  }
+                }
+
+                final entries = latestByShop.entries.toList()
+                  ..sort((a, b) => b.value.compareTo(a.value));
+
+                if (entries.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No visited cafes yet',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  );
+                }
+
+                return ListView.separated(
+                  itemCount: entries.length + 1,
+                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  itemBuilder: (context, index) {
+                    if (index == 0) return const SizedBox(height: 24);
+                    final entry = entries[index - 1];
+                    final shopRef = FirebaseFirestore.instance
+                        .collection('shops')
+                        .doc(entry.key);
+                    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                      stream: shopRef.snapshots(),
+                      builder: (context, shopSnap) {
+                        final shopName = (shopSnap.data?.data()?['name'] as String?) ?? 'Cafe';
+                        return _buildCafeCard(
+                          cafeName: shopName,
+                          cafeImage: '',
+                          backgroundColor: Colors.grey[700]!,
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            );
+          }),
         ),
       ),
     );

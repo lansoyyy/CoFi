@@ -40,16 +40,67 @@ class ProfileTab extends StatelessWidget {
                   ),
                   Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.share,
-                            color: Colors.white, size: 26),
-                        onPressed: () {},
-                      ),
-                      IconButton(
+                      PopupMenuButton<int>(
                         icon: const Icon(Icons.more_vert,
                             color: Colors.white, size: 26),
-                        onPressed: () {},
-                      ),
+                        onSelected: (value) async {
+                          if (value == 0) {
+                            final shouldLogout = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                backgroundColor: Colors.grey[900],
+                                title: const Text(
+                                  'Logout',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                content: const Text(
+                                  'Are you sure you want to logout?',
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(true),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.redAccent,
+                                    ),
+                                    child: const Text('Logout'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (shouldLogout == true) {
+                              try {
+                                await FirebaseAuth.instance.signOut();
+                                // AuthGate will navigate to LandingScreen automatically
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text('Logout failed: $e')),
+                                  );
+                                }
+                              }
+                            }
+                          }
+                        },
+                        itemBuilder: (context) {
+                          return [
+                            PopupMenuItem<int>(
+                              value: 0,
+                              child: TextWidget(
+                                text: 'Logout',
+                                fontSize: 16,
+                              ),
+                            )
+                          ];
+                        },
+                      )
                     ],
                   ),
                 ],
@@ -58,20 +109,71 @@ class ProfileTab extends StatelessWidget {
             const SizedBox(height: 18),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: TextWidget(
-                text: 'Juan Dela Cruz',
-                fontSize: 32,
-                color: Colors.white,
-                isBold: true,
-              ),
+              child: Builder(builder: (context) {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user == null) {
+                  return TextWidget(
+                    text: 'Guest',
+                    fontSize: 32,
+                    color: Colors.white,
+                    isBold: true,
+                  );
+                }
+                final userDocStream = FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user.uid)
+                    .snapshots();
+                return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  stream: userDocStream,
+                  builder: (context, snapshot) {
+                    final data = snapshot.data?.data();
+                    final name = (data?['name'] as String?)?.trim();
+                    final displayName = (name?.isNotEmpty == true)
+                        ? name!
+                        : (user.displayName ?? 'User');
+                    return TextWidget(
+                      text: displayName,
+                      fontSize: 32,
+                      color: Colors.white,
+                      isBold: true,
+                    );
+                  },
+                );
+              }),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: TextWidget(
-                text: 'Davao City, PH',
-                fontSize: 16,
-                color: Colors.white70,
-              ),
+              child: Builder(builder: (context) {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user == null) {
+                  return TextWidget(
+                    text: 'Not signed in',
+                    fontSize: 16,
+                    color: Colors.white70,
+                  );
+                }
+                final userDocStream = FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user.uid)
+                    .snapshots();
+                return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  stream: userDocStream,
+                  builder: (context, snapshot) {
+                    final data = snapshot.data?.data();
+                    final address = (data?['address'] as String?)?.trim();
+                    final text =
+                        (address == null || address.isEmpty) ? '' : address;
+                    if (text.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return TextWidget(
+                      text: text,
+                      fontSize: 16,
+                      color: Colors.white70,
+                    );
+                  },
+                );
+              }),
             ),
             const SizedBox(height: 32),
             // Stats Card
@@ -94,22 +196,56 @@ class ProfileTab extends StatelessWidget {
                       isBold: true,
                     ),
                     const SizedBox(height: 18),
-                    _buildStatRow('1', 'Shops Visited', 'This week', onTap: () {
-                      Navigator.pushNamed(context, '/visitedCafes');
-                    }),
-                    const Divider(color: Colors.white24, thickness: 1),
-                    _buildStatRow('3', 'Shops Visited', 'This month',
-                        onTap: () {
-                      Navigator.pushNamed(context, '/visitedCafes');
-                    }),
-                    const Divider(color: Colors.white24, thickness: 1),
-                    _buildStatRow('5', 'Shops Visited', 'This year',
-                        underline: true, onTap: () {
-                      Navigator.pushNamed(context, '/visitedCafes');
-                    }),
-                    const Divider(color: Colors.white24, thickness: 1),
-                    _buildStatRow('3', 'Shops Reviewed', '', onTap: () {
-                      Navigator.pushNamed(context, '/yourReviews');
+                    Builder(builder: (context) {
+                      final now = DateTime.now();
+                      final startOfToday =
+                          DateTime(now.year, now.month, now.day);
+                      final startOfWeek = startOfToday.subtract(
+                          Duration(days: startOfToday.weekday - 1)); // Monday
+                      final startOfMonth = DateTime(now.year, now.month, 1);
+                      final startOfYear = DateTime(now.year, 1, 1);
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildStatRowStream(
+                            _streamVisitCount(start: startOfWeek, end: now),
+                            'Shops Visited',
+                            'This week',
+                            onTap: () {
+                              Navigator.pushNamed(context, '/visitedCafes');
+                            },
+                          ),
+                          const Divider(color: Colors.white24, thickness: 1),
+                          _buildStatRowStream(
+                            _streamVisitCount(start: startOfMonth, end: now),
+                            'Shops Visited',
+                            'This month',
+                            onTap: () {
+                              Navigator.pushNamed(context, '/visitedCafes');
+                            },
+                          ),
+                          const Divider(color: Colors.white24, thickness: 1),
+                          _buildStatRowStream(
+                            _streamVisitCount(start: startOfYear, end: now),
+                            'Shops Visited',
+                            'This year',
+                            underline: true,
+                            onTap: () {
+                              Navigator.pushNamed(context, '/visitedCafes');
+                            },
+                          ),
+                          const Divider(color: Colors.white24, thickness: 1),
+                          _buildStatRowStream(
+                            _streamReviewCount(start: startOfYear, end: now),
+                            'Shops Reviewed',
+                            '',
+                            onTap: () {
+                              Navigator.pushNamed(context, '/yourReviews');
+                            },
+                          ),
+                        ],
+                      );
                     }),
                   ],
                 ),
@@ -326,5 +462,74 @@ class ProfileTab extends StatelessWidget {
     }
 
     return content;
+  }
+
+  // Streams the count of UNIQUE shops the user has visited in a date range
+  // using collectionGroup('visits') across all shops.
+  Stream<int> _streamVisitCount(
+      {required DateTime start, required DateTime end}) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return Stream<int>.value(0);
+    final startTs = Timestamp.fromDate(start);
+    final endTs = Timestamp.fromDate(end);
+    final query = FirebaseFirestore.instance
+        .collectionGroup('visits')
+        .where('userId', isEqualTo: user.uid)
+        .where('createdAt', isGreaterThanOrEqualTo: startTs)
+        .where('createdAt', isLessThanOrEqualTo: endTs);
+    return query.snapshots().map((snap) {
+      final uniqueShopIds = <String>{};
+      for (final doc in snap.docs) {
+        final shopId = doc.reference.parent.parent?.id;
+        if (shopId != null) uniqueShopIds.add(shopId);
+      }
+      return uniqueShopIds.length;
+    });
+  }
+
+  // Streams the count of UNIQUE shops the user has reviewed in a date range
+  // using collectionGroup('reviews') across all shops.
+  Stream<int> _streamReviewCount(
+      {required DateTime start, required DateTime end}) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return Stream<int>.value(0);
+    final startTs = Timestamp.fromDate(start);
+    final endTs = Timestamp.fromDate(end);
+    final query = FirebaseFirestore.instance
+        .collectionGroup('reviews')
+        .where('userId', isEqualTo: user.uid)
+        .where('createdAt', isGreaterThanOrEqualTo: startTs)
+        .where('createdAt', isLessThanOrEqualTo: endTs);
+    return query.snapshots().map((snap) {
+      final uniqueShopIds = <String>{};
+      for (final doc in snap.docs) {
+        final shopId = doc.reference.parent.parent?.id;
+        if (shopId != null) uniqueShopIds.add(shopId);
+      }
+      return uniqueShopIds.length;
+    });
+  }
+
+  // Builds a stat row that listens to a count stream and renders it.
+  Widget _buildStatRowStream(
+    Stream<int> countStream,
+    String title,
+    String subtitle, {
+    bool underline = false,
+    VoidCallback? onTap,
+  }) {
+    return StreamBuilder<int>(
+      stream: countStream,
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? 0;
+        return _buildStatRow(
+          count.toString(),
+          title,
+          subtitle,
+          underline: underline,
+          onTap: onTap,
+        );
+      },
+    );
   }
 }

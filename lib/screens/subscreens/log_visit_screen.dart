@@ -52,6 +52,18 @@ class _LogVisitScreenState extends State<LogVisitScreen> {
           .collection('visits')
           .add(data);
 
+      // Also record this shopId in the user's `visited` array so counts match Explore/Collections
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .set({
+          'visited': FieldValue.arrayUnion([widget.shopId])
+        }, SetOptions(merge: true));
+      } catch (_) {
+        // No-op: UI feedback below still applies
+      }
+
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context)

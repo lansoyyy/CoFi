@@ -45,5 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Location usage descriptions for Geolocator -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app uses your location to tag newly submitted shops with their current coordinates.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app uses your location to tag newly submitted shops with their current coordinates.</string>
 </dict>
 </plist>

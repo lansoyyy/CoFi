@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 
@@ -42,6 +43,7 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
   String? _editShopId;
   bool _isLoadingExisting = false;
   bool _didLoadArgs = false;
+  bool _locationReady = false;
 
   // Schedule state: each day has isOpen + open/close times (TimeOfDay?)
   final List<MapEntry<String, String>> _days = const [
@@ -67,6 +69,11 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
           'close': null, // TimeOfDay?
         }
     };
+
+    // Ensure location services and permission are enabled on screen entry
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureLocationReady();
+    });
   }
 
   @override
@@ -150,6 +157,107 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
         .toList();
   }
 
+  Future<void> _ensureLocationReady() async {
+    if (!mounted) return;
+    while (mounted) {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Enable Location Services'),
+            content: const Text(
+                'Please turn on Location Services to submit a shop with your current location.'),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  await Geolocator.openLocationSettings();
+                  if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+                },
+                child: const Text('Open Settings'),
+              ),
+              TextButton(
+                onPressed: () {
+                  // Retry check
+                  if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+        // Loop and re-check
+        continue;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever) {
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Location Permission Needed'),
+            content: const Text(
+                'Please grant location permission in App Settings to continue.'),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  await Geolocator.openAppSettings();
+                  if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+                },
+                child: const Text('Open App Settings'),
+              ),
+              TextButton(
+                onPressed: () {
+                  if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+        continue;
+      }
+
+      if (permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse) {
+        if (mounted) setState(() => _locationReady = true);
+        break;
+      }
+      // If still denied (not forever), loop to request again
+    }
+  }
+
+  Future<Position?> _getCurrentPosition() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        // Optionally inform the user that location services are disabled
+        return null;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        // Permissions are denied, next time we could show a dialog directing to settings
+        return null;
+      }
+
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _submitShop() async {
     final name = shopNameController.text.trim();
     final address = addressController.text.trim();
@@ -177,6 +285,11 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
               'email': user.email,
             };
 
+      // Try to get current location (optional; will be included if available)
+      final position = await _getCurrentPosition();
+      final double? latitude = position?.latitude;
+      final double? longitude = position?.longitude;
+
       if (_isEditing && _editShopId != null && _editShopId!.isNotEmpty) {
         // Update existing shop
         final updateData = {
@@ -193,6 +306,8 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
           },
           'schedule': _buildSchedulePayload(),
           'tags': _selectedTagsList(),
+          if (latitude != null && longitude != null) 'latitude': latitude,
+          if (latitude != null && longitude != null) 'longitude': longitude,
           'updatedAt': FieldValue.serverTimestamp(),
         };
 
@@ -234,6 +349,8 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
           'logoUrl': null,
           'gallery': <String>[],
           'tags': _selectedTagsList(),
+          if (latitude != null && longitude != null) 'latitude': latitude,
+          if (latitude != null && longitude != null) 'longitude': longitude,
           'postedBy': postedBy,
           'posterId': user?.uid,
           'postedAt': FieldValue.serverTimestamp(),
@@ -565,12 +682,55 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
 
               const SizedBox(height: 40),
 
+              // Location requirement notice
+              if (!_locationReady)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.location_off, color: Colors.amber, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Location required',
+                              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Please enable Location Services and grant permission to proceed.',
+                              style: TextStyle(color: Colors.white70, fontSize: 12),
+                            ),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton(
+                                onPressed: _ensureLocationReady,
+                                child: const Text('Fix', style: TextStyle(fontSize: 12)),
+                              ),
+                            )
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               // Save Button
               Container(
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: _isSaving ? null : _submitShop,
+                  onPressed: (_isSaving || !_locationReady) ? null : _submitShop,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primary,
                     shape: RoundedRectangleBorder(
@@ -588,7 +748,7 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
                           ),
                         )
                       : TextWidget(
-                          text: _isEditing ? 'Update' : 'Save',
+                          text: _locationReady ? (_isEditing ? 'Update' : 'Save') : 'Enable Location',
                           fontSize: 16,
                           color: Colors.white,
                           isBold: true,

@@ -1,19 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 
 class CoffeeShopDetailsBottomSheet extends StatelessWidget {
+  final String shopId;
   final String name;
   final String location;
   final String hours;
-  final String rating;
+  final String rating; // fallback display text
+  final bool isBookmarked;
+  final VoidCallback? onToggleBookmark;
 
   const CoffeeShopDetailsBottomSheet({
     super.key,
+    required this.shopId,
     required this.name,
     required this.location,
     required this.hours,
     required this.rating,
+    this.isBookmarked = false,
+    this.onToggleBookmark,
   });
 
   @override
@@ -119,9 +126,13 @@ class CoffeeShopDetailsBottomSheet extends StatelessWidget {
                     top: 16,
                     right: 16,
                     child: IconButton(
-                      icon: const Icon(Icons.bookmark_border,
-                          color: Colors.white),
-                      onPressed: () {},
+                      icon: Icon(
+                        isBookmarked
+                            ? Icons.bookmark
+                            : Icons.bookmark_border,
+                        color: Colors.white,
+                      ),
+                      onPressed: onToggleBookmark,
                     ),
                   ),
                 ],
@@ -167,10 +178,37 @@ class CoffeeShopDetailsBottomSheet extends StatelessWidget {
                           size: 16,
                         ),
                         const SizedBox(width: 4),
-                        TextWidget(
-                          text: rating,
-                          fontSize: 14,
-                          color: Colors.white,
+                        // Live rating text from reviews subcollection with fallback
+                        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                          stream: FirebaseFirestore.instance
+                              .collection('shops')
+                              .doc(shopId)
+                              .collection('reviews')
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return TextWidget(
+                                text: rating,
+                                fontSize: 14,
+                                color: Colors.white,
+                              );
+                            }
+                            final docs = snapshot.data!.docs;
+                            final scores = docs
+                                .map((d) => d.data()['rating'])
+                                .whereType<num>()
+                                .map((n) => n.toDouble())
+                                .toList();
+                            final count = scores.length;
+                            final avg =
+                                count == 0 ? 0.0 : scores.reduce((a, b) => a + b) / count;
+                            final text = '${avg.toStringAsFixed(1)} ($count)';
+                            return TextWidget(
+                              text: text,
+                              fontSize: 14,
+                              color: Colors.white,
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -195,10 +233,13 @@ class CoffeeShopDetailsBottomSheet extends StatelessWidget {
 
   static void show(
     BuildContext context, {
+    required String shopId,
     required String name,
     required String location,
     required String hours,
     required String rating,
+    bool isBookmarked = false,
+    VoidCallback? onToggleBookmark,
   }) {
     showModalBottomSheet(
       context: context,
@@ -206,10 +247,13 @@ class CoffeeShopDetailsBottomSheet extends StatelessWidget {
       isScrollControlled: true,
       useSafeArea: true,
       builder: (context) => CoffeeShopDetailsBottomSheet(
+        shopId: shopId,
         name: name,
         location: location,
         hours: hours,
         rating: rating,
+        isBookmarked: isBookmarked,
+        onToggleBookmark: onToggleBookmark,
       ),
     );
   }

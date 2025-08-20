@@ -211,18 +211,14 @@ class _CollectionsTabState extends State<CollectionsTab> {
               return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream: listsStream,
                 builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 12),
-                      child: TextWidget(
-                        text: 'Error loading lists: ${snapshot.error}',
-                        fontSize: 14,
-                        color: Colors.white70,
-                      ),
-                    );
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                        child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ));
                   }
-                  final docs = snapshot.data?.docs ?? const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+                  final docs = snapshot.data?.docs ?? [];
                   if (docs.isEmpty) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(
@@ -267,12 +263,27 @@ class _CollectionsTabState extends State<CollectionsTab> {
                                         '$count Shop${count == 1 ? '' : 's'}',
                                     customIcon: const Icon(Icons.local_cafe,
                                         color: Colors.white, size: 28),
-                                    onTap: () {
-                                      ListBottomSheet.show(
-                                        context,
-                                        title: title,
-                                        shopsStream: shopsStream,
-                                      );
+                                    onTap: () async {
+                                      try {
+                                        final res = await shopsQuery.get();
+                                        final shopsList = res.docs
+                                            .map((d) => d.data())
+                                            .toList();
+                                        if (!mounted) return;
+                                        ListBottomSheet.show(
+                                          context,
+                                          title: title,
+                                          shopsList: shopsList,
+                                        );
+                                      } catch (e) {
+                                        if (!mounted) return;
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  'Failed to load cafes: $e')),
+                                        );
+                                      }
                                     },
                                   );
                                 },
@@ -301,12 +312,69 @@ class _CollectionsTabState extends State<CollectionsTab> {
                                       '$itemCount Shop${itemCount == 1 ? '' : 's'}',
                                   customIcon: const Icon(Icons.local_cafe,
                                       color: Colors.white, size: 28),
-                                  onTap: () {
-                                    ListBottomSheet.show(
-                                      context,
-                                      title: title,
-                                      itemsStream: itemsStream,
-                                    );
+                                  onTap: () async {
+                                    try {
+                                      final res = await FirebaseFirestore
+                                          .instance
+                                          .collection('users')
+                                          .doc(user.uid)
+                                          .collection('lists')
+                                          .doc(d.id)
+                                          .collection('items')
+                                          .get();
+                                      final ids = res.docs
+                                          .map((doc) =>
+                                              (doc.data()['shopId']
+                                                  as String?) ??
+                                              doc.id)
+                                          .where((id) => id.isNotEmpty)
+                                          .toSet()
+                                          .toList();
+                                      if (ids.isEmpty) {
+                                        ListBottomSheet.show(
+                                          context,
+                                          title: title,
+                                          shopsList: const <Map<String,
+                                              dynamic>>[],
+                                        );
+                                        return;
+                                      }
+                                      // Fetch shops in batches of 10 due to whereIn limit
+                                      final List<Map<String, dynamic>>
+                                          shopsList = [];
+                                      const int batchSize = 10;
+                                      for (var i = 0;
+                                          i < ids.length;
+                                          i += batchSize) {
+                                        final batch = ids.sublist(
+                                            i,
+                                            i + batchSize > ids.length
+                                                ? ids.length
+                                                : i + batchSize);
+                                        final snap = await FirebaseFirestore
+                                            .instance
+                                            .collection('shops')
+                                            .where(FieldPath.documentId,
+                                                whereIn: batch)
+                                            .get();
+                                        shopsList.addAll(
+                                            snap.docs.map((e) => e.data()));
+                                      }
+                                      if (!mounted) return;
+                                      ListBottomSheet.show(
+                                        context,
+                                        title: title,
+                                        shopsList: shopsList,
+                                      );
+                                    } catch (e) {
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text(
+                                                'Failed to load cafes: $e')),
+                                      );
+                                    }
                                   },
                                 );
                               },

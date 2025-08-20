@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/text_widget.dart';
 
@@ -7,13 +8,15 @@ class ListBottomSheet extends StatelessWidget {
   final Stream<QuerySnapshot<Map<String, dynamic>>>? itemsStream;
   final Stream<List<String>>? shopIdsStream;
   final Stream<QuerySnapshot<Map<String, dynamic>>>? shopsStream;
+  final List<Map<String, dynamic>>? shopsList;
 
   const ListBottomSheet(
       {Key? key,
       required this.title,
       this.itemsStream,
       this.shopIdsStream,
-      this.shopsStream})
+      this.shopsStream,
+      this.shopsList})
       : super(key: key);
 
   @override
@@ -66,11 +69,12 @@ class ListBottomSheet extends StatelessWidget {
           Expanded(
             child: Builder(
               builder: (context) {
-                // If no streams are provided, avoid indefinite loading
-                final noStreams = shopsStream == null &&
+                // If no data source is provided, avoid indefinite loading
+                final noData = shopsList == null &&
+                    shopsStream == null &&
                     itemsStream == null &&
                     shopIdsStream == null;
-                if (noStreams) {
+                if (noData) {
                   return const Center(
                     child: Text(
                       'Nothing to show (no data source provided).',
@@ -78,47 +82,111 @@ class ListBottomSheet extends StatelessWidget {
                     ),
                   );
                 }
+                // Static list path (preferred when provided)
+                if (shopsList != null) {
+                  final shops = shopsList!;
+                  if (shops.isEmpty) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              'No cafes yet',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: ListView.separated(
+                          itemCount: shops.length,
+                          separatorBuilder: (_, __) =>
+                              const Divider(color: Colors.white24),
+                          itemBuilder: (context, index) {
+                            final data = shops[index];
+                            final shopName =
+                                (data['name'] as String?) ?? 'Cafe';
+                            return _buildCafeItem(name: shopName);
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                }
                 // Priority: direct shops stream -> list items -> shopIds
                 if (shopsStream != null) {
                   return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                     stream: shopsStream,
                     builder: (context, snapshot) {
+                      final debugLine =
+                          'src=shops, state=${snapshot.connectionState}, hasData=${snapshot.hasData}, count=${snapshot.data?.docs.length}';
                       if (snapshot.hasError) {
-                        return Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(
-                              'Error loading cafes: ${snapshot.error}',
-                              style: const TextStyle(color: Colors.white70),
-                              textAlign: TextAlign.center,
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Expanded(
+                              child: Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Text(
+                                    'Error loading cafes',
+                                    style: TextStyle(color: Colors.white70),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         );
                       }
                       final shops = snapshot.data?.docs;
-                      if (shops == null) {
-                        return const Center(
-                            child:
-                                CircularProgressIndicator(color: Colors.white));
-                      }
-                      if (shops.isEmpty) {
-                        return const Center(
-                          child: Text(
-                            'No cafes yet',
-                            style: TextStyle(color: Colors.white70),
-                          ),
+
+                      if (shops == null || shops.isEmpty) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Expanded(
+                              child: Center(
+                                child: Text(
+                                  'No cafes yet',
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                              ),
+                            ),
+                          ],
                         );
                       }
-                      return ListView.separated(
-                        itemCount: shops.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(color: Colors.white24),
-                        itemBuilder: (context, index) {
-                          final shop = shops[index];
-                          final data = shop.data();
-                          final shopName = (data['name'] as String?) ?? 'Cafe';
-                          return _buildCafeItem(name: shopName);
-                        },
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            child: Text(debugLine,
+                                style: const TextStyle(
+                                    color: Colors.white38, fontSize: 12)),
+                          ),
+                          Expanded(
+                            child: ListView.separated(
+                              itemCount: shops.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(color: Colors.white24),
+                              itemBuilder: (context, index) {
+                                final shop = shops[index];
+                                final data = shop.data();
+                                final shopName =
+                                    (data['name'] as String?) ?? 'Cafe';
+                                return _buildCafeItem(name: shopName);
+                              },
+                            ),
+                          ),
+                        ],
                       );
                     },
                   );
@@ -127,57 +195,92 @@ class ListBottomSheet extends StatelessWidget {
                   return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                     stream: itemsStream,
                     builder: (context, snapshot) {
+                      final debugLine =
+                          'src=items, state=${snapshot.connectionState}, hasData=${snapshot.hasData}, count=${snapshot.data?.docs.length}';
                       if (snapshot.hasError) {
-                        return Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(
-                              'Error loading list: ${snapshot.error}',
-                              style: const TextStyle(color: Colors.white70),
-                              textAlign: TextAlign.center,
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (kDebugMode)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                child: Text(debugLine,
+                                    style: const TextStyle(
+                                        color: Colors.white38, fontSize: 12)),
+                              ),
+                            const Expanded(
+                              child: Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Text(
+                                    'Error loading list',
+                                    style: TextStyle(color: Colors.white70),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         );
                       }
                       final items = snapshot.data?.docs;
-                      if (items == null) {
-                        return const Center(
-                            child:
-                                CircularProgressIndicator(color: Colors.white));
-                      }
-                      if (items.isEmpty) {
-                        return const Center(
-                          child: Text(
-                            'No cafes yet',
-                            style: TextStyle(color: Colors.white70),
-                          ),
+                      if (items == null || items.isEmpty) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Expanded(
+                              child: Center(
+                                child: Text(
+                                  'No cafes yet',
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                              ),
+                            ),
+                          ],
                         );
                       }
-                      return ListView.separated(
-                        itemCount: items.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(color: Colors.white24),
-                        itemBuilder: (context, index) {
-                          final item = items[index];
-                          final data = item.data();
-                          final shopId = (data['shopId'] as String?) ?? item.id;
-                          if (shopId.isEmpty) {
-                            return const SizedBox.shrink();
-                          }
-                          final shopRef = FirebaseFirestore.instance
-                              .collection('shops')
-                              .doc(shopId);
-                          return StreamBuilder<
-                              DocumentSnapshot<Map<String, dynamic>>>(
-                            stream: shopRef.snapshots(),
-                            builder: (context, shopSnap) {
-                              final shopName =
-                                  (shopSnap.data?.data()?['name'] as String?) ??
-                                      'Cafe';
-                              return _buildCafeItem(name: shopName);
-                            },
-                          );
-                        },
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (kDebugMode)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              child: Text(debugLine,
+                                  style: const TextStyle(
+                                      color: Colors.white38, fontSize: 12)),
+                            ),
+                          Expanded(
+                            child: ListView.separated(
+                              itemCount: items.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(color: Colors.white24),
+                              itemBuilder: (context, index) {
+                                final item = items[index];
+                                final data = item.data();
+                                final shopId =
+                                    (data['shopId'] as String?) ?? item.id;
+                                if (shopId.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                final shopRef = FirebaseFirestore.instance
+                                    .collection('shops')
+                                    .doc(shopId);
+                                return StreamBuilder<
+                                    DocumentSnapshot<Map<String, dynamic>>>(
+                                  stream: shopRef.snapshots(),
+                                  builder: (context, shopSnap) {
+                                    final shopName = (shopSnap.data
+                                            ?.data()?['name'] as String?) ??
+                                        'Cafe';
+                                    return _buildCafeItem(name: shopName);
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       );
                     },
                   );
@@ -187,52 +290,70 @@ class ListBottomSheet extends StatelessWidget {
                   stream: shopIdsStream!,
                   builder: (context, snapshot) {
                     if (snapshot.hasError) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Text(
-                            'Error loading cafes: ${snapshot.error}',
-                            style: const TextStyle(color: Colors.white70),
-                            textAlign: TextAlign.center,
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Expanded(
+                            child: Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Text(
+                                  'Error loading cafes',
+                                  style: TextStyle(color: Colors.white70),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       );
                     }
                     final ids = snapshot.data;
-                    if (ids == null) {
-                      return const Center(
-                          child:
-                              CircularProgressIndicator(color: Colors.white));
-                    }
-                    if (ids.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          'No cafes yet',
-                          style: TextStyle(color: Colors.white70),
-                        ),
+                    if (ids == null || ids.isEmpty) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Expanded(
+                            child: Center(
+                              child: Text(
+                                'No cafes yet',
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                          ),
+                        ],
                       );
                     }
-                    return ListView.separated(
-                      itemCount: ids.length,
-                      separatorBuilder: (_, __) =>
-                          const Divider(color: Colors.white24),
-                      itemBuilder: (context, index) {
-                        final shopId = ids[index];
-                        if (shopId.isEmpty) return const SizedBox.shrink();
-                        final shopRef = FirebaseFirestore.instance
-                            .collection('shops')
-                            .doc(shopId);
-                        return StreamBuilder<
-                            DocumentSnapshot<Map<String, dynamic>>>(
-                          stream: shopRef.snapshots(),
-                          builder: (context, shopSnap) {
-                            final shopName =
-                                (shopSnap.data?.data()?['name'] as String?) ??
-                                    'Cafe';
-                            return _buildCafeItem(name: shopName);
-                          },
-                        );
-                      },
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: ListView.separated(
+                            itemCount: ids.length,
+                            separatorBuilder: (_, __) =>
+                                const Divider(color: Colors.white24),
+                            itemBuilder: (context, index) {
+                              final shopId = ids[index];
+                              if (shopId.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              final shopRef = FirebaseFirestore.instance
+                                  .collection('shops')
+                                  .doc(shopId);
+                              return StreamBuilder<
+                                  DocumentSnapshot<Map<String, dynamic>>>(
+                                stream: shopRef.snapshots(),
+                                builder: (context, shopSnap) {
+                                  final shopName = (shopSnap.data
+                                          ?.data()?['name'] as String?) ??
+                                      'Cafe';
+                                  return _buildCafeItem(name: shopName);
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     );
                   },
                 );
@@ -275,6 +396,7 @@ class ListBottomSheet extends StatelessWidget {
 
   static void show(BuildContext context,
       {required String title,
+      List<Map<String, dynamic>>? shopsList,
       Stream<QuerySnapshot<Map<String, dynamic>>>? itemsStream,
       Stream<List<String>>? shopIdsStream,
       Stream<QuerySnapshot<Map<String, dynamic>>>? shopsStream}) {
@@ -284,6 +406,7 @@ class ListBottomSheet extends StatelessWidget {
       isScrollControlled: true,
       builder: (context) => ListBottomSheet(
           title: title,
+          shopsList: shopsList,
           itemsStream: itemsStream,
           shopIdsStream: shopIdsStream,
           shopsStream: shopsStream),

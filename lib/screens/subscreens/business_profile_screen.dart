@@ -3,6 +3,7 @@ import 'package:cofi/widgets/my_jobs_bottom_sheet.dart';
 import 'package:cofi/widgets/post_job_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 import '../../widgets/post_event_bottom_sheet.dart';
@@ -24,6 +25,7 @@ class BusinessProfileScreen extends StatelessWidget {
         (shop?['id'] is String && (shop?['id'] as String).trim().isNotEmpty)
             ? shop!['id'] as String
             : null;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -51,69 +53,49 @@ class BusinessProfileScreen extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 // Business Profile Card
-                GestureDetector(
-                  onTap: () {
-                    if (shopId != null && shopId.isNotEmpty) {
-                      Navigator.pushNamed(
-                        context,
-                        '/submitShop',
-                        arguments: {'editShopId': shopId},
-                      );
-                    } else {
-                      Navigator.pushNamed(context, '/submitShop');
-                    }
-                  },
-                  child: Row(
-                    children: [
-                      // Business Logo
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: primary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Container(
-                            width: 28,
-                            height: 28,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.local_cafe,
-                              color: Colors.red,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
+                if (shopId != null && shopId.isNotEmpty)
+                  StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('shops')
+                        .doc(shopId)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return _buildBusinessProfileCard(
+                          context,
+                          shopName,
+                          shopId,
+                          null, // logoUrl
+                        );
+                      }
 
-                      // Business Info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            TextWidget(
-                              text: shopName,
-                              fontSize: 18,
-                              color: Colors.white,
-                              isBold: true,
-                            ),
-                            const SizedBox(height: 4),
-                            TextWidget(
-                              text: 'Tap to Manage profile',
-                              fontSize: 14,
-                              color: Colors.grey[400]!,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      if (snapshot.hasError) {
+                        return _buildBusinessProfileCard(
+                          context,
+                          shopName,
+                          shopId,
+                          null, // logoUrl
+                        );
+                      }
+
+                      final data = snapshot.data?.data();
+                      final logoUrl = data?['logoUrl'] as String?;
+
+                      return _buildBusinessProfileCard(
+                        context,
+                        shopName,
+                        shopId,
+                        logoUrl,
+                      );
+                    },
+                  )
+                else
+                  _buildBusinessProfileCard(
+                    context,
+                    shopName,
+                    shopId,
+                    null, // logoUrl
                   ),
-                ),
 
                 const SizedBox(height: 40),
 
@@ -277,6 +259,115 @@ class BusinessProfileScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBusinessProfileCard(
+    BuildContext context,
+    String shopName,
+    String? shopId,
+    String? logoUrl,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        if (shopId != null && shopId.isNotEmpty) {
+          Navigator.pushNamed(
+            context,
+            '/submitShop',
+            arguments: {'editShopId': shopId},
+          );
+        } else {
+          Navigator.pushNamed(context, '/submitShop');
+        }
+      },
+      child: Row(
+        children: [
+          // Business Logo
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: primary,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: logoUrl != null && logoUrl.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: logoUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Center(
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.local_cafe,
+                            color: Colors.red,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Center(
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.local_cafe,
+                            color: Colors.red,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    )
+                  : Center(
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.local_cafe,
+                          color: Colors.red,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 16),
+
+          // Business Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextWidget(
+                  text: shopName,
+                  fontSize: 18,
+                  color: Colors.white,
+                  isBold: true,
+                ),
+                const SizedBox(height: 4),
+                TextWidget(
+                  text: 'Tap to Manage profile',
+                  fontSize: 14,
+                  color: Colors.grey[400]!,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../widgets/text_widget.dart';
 
 class ReviewsScreen extends StatelessWidget {
@@ -82,11 +83,13 @@ class ReviewsScreen extends StatelessWidget {
                         final tags = (m['tags'] is List)
                             ? (m['tags'] as List).cast<String>()
                             : <String>[];
+                        final imageUrl = m['imageUrl'] as String?;
                         return _buildReviewCard(
                           name: name,
                           review: review.isNotEmpty ? review : '—',
                           tags: tags,
                           imagePath: 'assets/images/review_placeholder.jpg',
+                          imageUrl: imageUrl,
                         );
                       }).toList(),
                   ],
@@ -114,11 +117,13 @@ class ReviewsScreen extends StatelessWidget {
                     final tags = (m['tags'] is List)
                         ? (m['tags'] as List).cast<String>()
                         : <String>[];
+                    final imageUrl = m['imageUrl'] as String?;
                     return _buildReviewCard(
                       name: name,
                       review: review.isNotEmpty ? review : '—',
                       tags: tags,
                       imagePath: 'assets/images/review_placeholder.jpg',
+                      imageUrl: imageUrl,
                     );
                   }).toList(),
               ],
@@ -131,6 +136,7 @@ class ReviewsScreen extends StatelessWidget {
     required String review,
     required List<String> tags,
     required String imagePath,
+    String? imageUrl,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -152,9 +158,13 @@ class ReviewsScreen extends StatelessWidget {
                     color: primary,
                     shape: BoxShape.circle,
                   ),
-                  child: const Center(
-                    child:
-                        Icon(Icons.location_on, color: Colors.white, size: 24),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -212,17 +222,39 @@ class ReviewsScreen extends StatelessWidget {
               color: Colors.white70,
             ),
             const SizedBox(height: 16),
-            Container(
-              height: 120,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.grey[800],
+            if (imageUrl != null && imageUrl.isNotEmpty)
+              Container(
+                height: 120,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    errorWidget: (context, url, error) => const Center(
+                      child: Icon(Icons.image, color: Colors.white38, size: 60),
+                    ),
+                  ),
+                ),
+              )
+            else
+              Container(
+                height: 120,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.grey[800],
+                ),
+                child: const Center(
+                  child: Icon(Icons.image, color: Colors.white38, size: 60),
+                ),
               ),
-              child: const Center(
-                child: Icon(Icons.image, color: Colors.white38, size: 60),
-              ),
-            ),
           ],
         ),
       ),

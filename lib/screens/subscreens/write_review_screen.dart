@@ -7,8 +7,15 @@ class WriteReviewScreen extends StatelessWidget {
   final String shopId;
   final String shopName;
   final String shopAddress;
+  final String logo;
 
-  const WriteReviewScreen({Key? key, required this.shopId, required this.shopName, required this.shopAddress}) : super(key: key);
+  const WriteReviewScreen(
+      {Key? key,
+      required this.shopId,
+      required this.shopName,
+      required this.logo,
+      required this.shopAddress})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -43,9 +50,10 @@ class WriteReviewScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     color: Colors.grey[800],
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.image, color: Colors.white38, size: 24),
+                    image: DecorationImage(
+                      image: NetworkImage(logo),
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -108,6 +116,7 @@ class WriteReviewScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => ReviewShopScreen(
+                          logo: logo,
                           shopId: shopId,
                           shopName: shopName,
                           shopAddress: shopAddress,

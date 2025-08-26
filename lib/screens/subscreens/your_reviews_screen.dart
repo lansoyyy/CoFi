@@ -102,8 +102,9 @@ class YourReviewsScreen extends StatelessWidget {
                                     timeAgo: timeAgo,
                                     reviewText: text,
                                     tags: tags,
-                                    imagePath: '',
-                                    hasImage: true,
+                                    imagePath:
+                                        data?['imageUrl'] as String? ?? '',
+                                    hasImage: data?['imageUrl'] != null,
                                   );
                                 }
                                 final shopRef = FirebaseFirestore.instance
@@ -122,8 +123,9 @@ class YourReviewsScreen extends StatelessWidget {
                                       timeAgo: timeAgo,
                                       reviewText: text,
                                       tags: tags,
-                                      imagePath: '',
-                                      hasImage: true,
+                                      imagePath:
+                                          data?['imageUrl'] as String? ?? '',
+                                      hasImage: data?['imageUrl'] != null,
                                     );
                                   },
                                 );
@@ -259,16 +261,9 @@ class YourReviewsScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.grey[800],
                 borderRadius: BorderRadius.circular(12),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  color: Colors.grey[700],
-                  child: const Icon(
-                    Icons.image,
-                    color: Colors.white54,
-                    size: 40,
-                  ),
+                image: DecorationImage(
+                  image: NetworkImage(imagePath),
+                  fit: BoxFit.cover,
                 ),
               ),
             ),

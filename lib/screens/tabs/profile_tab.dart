@@ -30,11 +30,11 @@ class ProfileTab extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: Center(
-                      child: TextWidget(
-                        text: 'cofi',
-                        fontSize: 20,
-                        color: Colors.white,
-                        isBold: true,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                        ),
                       ),
                     ),
                   ),

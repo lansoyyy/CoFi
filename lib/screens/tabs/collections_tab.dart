@@ -164,11 +164,13 @@ class _CollectionsTabState extends State<CollectionsTab> {
                       iconBg: primary,
                       title: 'Visited Cafes',
                       subtitle: '$count Shop${count == 1 ? '' : 's'}',
-                      customIcon: TextWidget(
-                        text: 'cofi',
-                        fontSize: 16,
-                        color: Colors.white,
-                        isBold: true,
+                      customIcon: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                          ),
+                        ),
                       ),
                       onTap: () {
                         Navigator.pushNamed(context, '/visitedCafes');

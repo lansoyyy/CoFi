@@ -10,6 +10,7 @@ class CoffeeShopDetailsBottomSheet extends StatelessWidget {
   final String hours;
   final String rating; // fallback display text
   final bool isBookmarked;
+  final String? imageUrl;
   final VoidCallback? onToggleBookmark;
 
   const CoffeeShopDetailsBottomSheet({
@@ -20,6 +21,7 @@ class CoffeeShopDetailsBottomSheet extends StatelessWidget {
     required this.hours,
     required this.rating,
     this.isBookmarked = false,
+    this.imageUrl,
     this.onToggleBookmark,
   });
 
@@ -78,12 +80,13 @@ class CoffeeShopDetailsBottomSheet extends StatelessWidget {
                     width: double.infinity,
                     height: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.grey[700],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.image, color: Colors.white38, size: 50),
-                    ),
+                        color: Colors.grey[700],
+                        borderRadius: BorderRadius.circular(16),
+                        image: DecorationImage(
+                            image: NetworkImage(
+                              imageUrl!,
+                            ),
+                            fit: BoxFit.cover)),
                   ),
 
                   // Overlay with coffee shop name
@@ -127,9 +130,7 @@ class CoffeeShopDetailsBottomSheet extends StatelessWidget {
                     right: 16,
                     child: IconButton(
                       icon: Icon(
-                        isBookmarked
-                            ? Icons.bookmark
-                            : Icons.bookmark_border,
+                        isBookmarked ? Icons.bookmark : Icons.bookmark_border,
                         color: Colors.white,
                       ),
                       onPressed: onToggleBookmark,
@@ -200,8 +201,9 @@ class CoffeeShopDetailsBottomSheet extends StatelessWidget {
                                 .map((n) => n.toDouble())
                                 .toList();
                             final count = scores.length;
-                            final avg =
-                                count == 0 ? 0.0 : scores.reduce((a, b) => a + b) / count;
+                            final avg = count == 0
+                                ? 0.0
+                                : scores.reduce((a, b) => a + b) / count;
                             final text = '${avg.toStringAsFixed(1)} ($count)';
                             return TextWidget(
                               text: text,
@@ -240,6 +242,7 @@ class CoffeeShopDetailsBottomSheet extends StatelessWidget {
     required String rating,
     bool isBookmarked = false,
     VoidCallback? onToggleBookmark,
+    required String imageUrl,
   }) {
     showModalBottomSheet(
       context: context,
@@ -247,6 +250,7 @@ class CoffeeShopDetailsBottomSheet extends StatelessWidget {
       isScrollControlled: true,
       useSafeArea: true,
       builder: (context) => CoffeeShopDetailsBottomSheet(
+        imageUrl: imageUrl,
         shopId: shopId,
         name: name,
         location: location,

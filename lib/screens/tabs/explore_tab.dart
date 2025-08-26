@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../widgets/text_widget.dart';
 
 class ExploreTab extends StatefulWidget {
@@ -406,6 +407,7 @@ class _ExploreTabState extends State<ExploreTab> {
                             );
                           },
                           child: _buildShopCard(
+                            logo: (d.data()['logoUrl'] ?? '') as String,
                             id: d.id,
                             name: (d.data()['name'] ?? '') as String,
                             city: (d.data()['address'] ?? '') as String,
@@ -453,6 +455,116 @@ class _ExploreTabState extends State<ExploreTab> {
     required VoidCallback onTap,
     required VoidCallback onBookmark,
   }) {
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream:
+          FirebaseFirestore.instance.collection('shops').doc(id).snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Column(
+            children: [
+              GestureDetector(
+                onTap: onTap,
+                child: Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[800],
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(18), bottom: Radius.circular(18)),
+                  ),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          TextWidget(
+                            text: hours,
+                            fontSize: 13,
+                            color: Colors.white70,
+                          ),
+                          const SizedBox(width: 10),
+                          const FaIcon(FontAwesomeIcons.solidStar,
+                              color: Colors.amber, size: 16),
+                          const SizedBox(width: 5),
+                          ratingText,
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      TextWidget(
+                        text: name,
+                        fontSize: 17,
+                        color: Colors.white,
+                        isBold: true,
+                      ),
+                      TextWidget(
+                        text: city,
+                        fontSize: 13,
+                        color: Colors.white70,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          );
+        }
+
+        if (snapshot.hasError) {
+          return _buildFeaturedCardWithImage(
+            id: id,
+            name: name,
+            city: city,
+            hours: hours,
+            ratingText: ratingText,
+            isBookmarked: isBookmarked,
+            onTap: onTap,
+            onBookmark: onBookmark,
+            imageUrl: null,
+          );
+        }
+
+        final data = snapshot.data?.data();
+        final logoUrl = data?['logoUrl'] as String?;
+        final gallery = (data?['gallery'] as List?)?.cast<String>() ?? [];
+        final firstGalleryImage = gallery.isNotEmpty ? gallery[0] : null;
+
+        // Use logo if available, otherwise use first gallery image
+        final imageUrl = logoUrl ?? firstGalleryImage;
+
+        return _buildFeaturedCardWithImage(
+          id: id,
+          name: name,
+          city: city,
+          hours: hours,
+          ratingText: ratingText,
+          isBookmarked: isBookmarked,
+          onTap: onTap,
+          onBookmark: onBookmark,
+          imageUrl: imageUrl,
+        );
+      },
+    );
+  }
+
+  Widget _buildFeaturedCardWithImage({
+    required String id,
+    required String name,
+    required String city,
+    required String hours,
+    required Widget ratingText,
+    required bool isBookmarked,
+    required VoidCallback onTap,
+    required VoidCallback onBookmark,
+    String? imageUrl,
+  }) {
     return Column(
       children: [
         GestureDetector(
@@ -466,9 +578,28 @@ class _ExploreTabState extends State<ExploreTab> {
             ),
             child: Stack(
               children: [
-                const Center(
-                  child: Icon(Icons.image, color: Colors.white38, size: 50),
-                ),
+                if (imageUrl != null)
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(18), bottom: Radius.circular(18)),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 200,
+                      placeholder: (context, url) => const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      errorWidget: (context, url, error) => const Center(
+                        child:
+                            Icon(Icons.image, color: Colors.white38, size: 50),
+                      ),
+                    ),
+                  )
+                else
+                  const Center(
+                    child: Icon(Icons.image, color: Colors.white38, size: 50),
+                  ),
                 Align(
                   alignment: Alignment.topRight,
                   child: IconButton(
@@ -796,13 +927,130 @@ class _ExploreTabState extends State<ExploreTab> {
     required Widget ratingText,
     required bool isBookmarked,
     required IconData icon,
+    required String logo,
     required VoidCallback onBookmark,
+  }) {
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream:
+          FirebaseFirestore.instance.collection('shops').doc(id).snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Column(
+              children: [
+                Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[800],
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(18), bottom: Radius.circular(18)),
+                  ),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            TextWidget(
+                              text: hours,
+                              fontSize: 13,
+                              color: Colors.white70,
+                            ),
+                            const SizedBox(width: 10),
+                            const FaIcon(FontAwesomeIcons.solidStar,
+                                color: Colors.amber, size: 16),
+                            const SizedBox(width: 5),
+                            ratingText,
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        TextWidget(
+                          text: name,
+                          fontSize: 17,
+                          color: Colors.white,
+                          isBold: true,
+                        ),
+                        TextWidget(
+                          text: city,
+                          fontSize: 13,
+                          color: Colors.white70,
+                        ),
+                      ],
+                    ),
+                    CircleAvatar(
+                      backgroundImage: NetworkImage(logo),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return _buildShopCardWithImage(
+            logo: logo,
+            id: id,
+            name: name,
+            city: city,
+            hours: hours,
+            ratingText: ratingText,
+            isBookmarked: isBookmarked,
+            icon: icon,
+            onBookmark: onBookmark,
+            imageUrl: null,
+          );
+        }
+
+        final data = snapshot.data?.data();
+        final logoUrl = data?['logoUrl'] as String?;
+        final gallery = (data?['gallery'] as List?)?.cast<String>() ?? [];
+        final firstGalleryImage = gallery.isNotEmpty ? gallery[0] : null;
+
+        // Use logo if available, otherwise use first gallery image
+        final imageUrl = logoUrl ?? firstGalleryImage;
+
+        return _buildShopCardWithImage(
+          logo: logo,
+          id: id,
+          name: name,
+          city: city,
+          hours: hours,
+          ratingText: ratingText,
+          isBookmarked: isBookmarked,
+          icon: icon,
+          onBookmark: onBookmark,
+          imageUrl: imageUrl,
+        );
+      },
+    );
+  }
+
+  Widget _buildShopCardWithImage({
+    required String id,
+    required String name,
+    required String city,
+    required String hours,
+    required Widget ratingText,
+    required bool isBookmarked,
+    required IconData icon,
+    required VoidCallback onBookmark,
+    required String logo,
+    String? imageUrl,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(
         children: [
-          // Placeholder for image
+          // Image container
           Container(
             height: 200,
             decoration: BoxDecoration(
@@ -812,9 +1060,28 @@ class _ExploreTabState extends State<ExploreTab> {
             ),
             child: Stack(
               children: [
-                const Center(
-                  child: Icon(Icons.image, color: Colors.white38, size: 50),
-                ),
+                if (imageUrl != null)
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(18), bottom: Radius.circular(18)),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 200,
+                      placeholder: (context, url) => const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      errorWidget: (context, url, error) => const Center(
+                        child:
+                            Icon(Icons.image, color: Colors.white38, size: 50),
+                      ),
+                    ),
+                  )
+                else
+                  const Center(
+                    child: Icon(Icons.image, color: Colors.white38, size: 50),
+                  ),
                 Align(
                   alignment: Alignment.topRight,
                   child: IconButton(
@@ -828,9 +1095,7 @@ class _ExploreTabState extends State<ExploreTab> {
               ],
             ),
           ),
-          SizedBox(
-            height: 10,
-          ),
+          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -866,8 +1131,7 @@ class _ExploreTabState extends State<ExploreTab> {
                 ],
               ),
               CircleAvatar(
-                backgroundColor: Colors.grey,
-                child: FaIcon(icon, color: Colors.white),
+                backgroundImage: NetworkImage(logo),
               ),
             ],
           ),

@@ -112,7 +112,8 @@ class ListBottomSheet extends StatelessWidget {
                             final data = shops[index];
                             final shopName =
                                 (data['name'] as String?) ?? 'Cafe';
-                            return _buildCafeItem(name: shopName);
+                            return _buildCafeItem(
+                                name: shopName, logo: data['logoUrl']);
                           },
                         ),
                       ),
@@ -182,7 +183,8 @@ class ListBottomSheet extends StatelessWidget {
                                 final data = shop.data();
                                 final shopName =
                                     (data['name'] as String?) ?? 'Cafe';
-                                return _buildCafeItem(name: shopName);
+                                return _buildCafeItem(
+                                    name: shopName, logo: data['logoUrl']);
                               },
                             ),
                           ),
@@ -271,10 +273,25 @@ class ListBottomSheet extends StatelessWidget {
                                     DocumentSnapshot<Map<String, dynamic>>>(
                                   stream: shopRef.snapshots(),
                                   builder: (context, shopSnap) {
-                                    final shopName = (shopSnap.data
-                                            ?.data()?['name'] as String?) ??
-                                        'Cafe';
-                                    return _buildCafeItem(name: shopName);
+                                    if (shopSnap.hasError) {
+                                      return _buildCafeItem(
+                                          name: 'Cafe', logo: '');
+                                    }
+
+                                    if (!shopSnap.hasData ||
+                                        !shopSnap.data!.exists) {
+                                      return _buildCafeItem(
+                                          name: 'Cafe', logo: '');
+                                    }
+
+                                    final shopData = shopSnap.data!.data();
+                                    final shopName =
+                                        (shopData?['name'] as String?) ??
+                                            'Cafe';
+                                    final logoUrl =
+                                        (shopData?['logoUrl'] as String?) ?? '';
+                                    return _buildCafeItem(
+                                        name: shopName, logo: logoUrl);
                                   },
                                 );
                               },
@@ -344,10 +361,24 @@ class ListBottomSheet extends StatelessWidget {
                                   DocumentSnapshot<Map<String, dynamic>>>(
                                 stream: shopRef.snapshots(),
                                 builder: (context, shopSnap) {
-                                  final shopName = (shopSnap.data
-                                          ?.data()?['name'] as String?) ??
-                                      'Cafe';
-                                  return _buildCafeItem(name: shopName);
+                                  if (shopSnap.hasError) {
+                                    return _buildCafeItem(
+                                        name: 'Cafe', logo: '');
+                                  }
+
+                                  if (!shopSnap.hasData ||
+                                      !shopSnap.data!.exists) {
+                                    return _buildCafeItem(
+                                        name: 'Cafe', logo: '');
+                                  }
+
+                                  final shopData = shopSnap.data!.data();
+                                  final shopName =
+                                      (shopData?['name'] as String?) ?? 'Cafe';
+                                  final logoUrl =
+                                      (shopData?['logoUrl'] as String?) ?? '';
+                                  return _buildCafeItem(
+                                      name: shopName, logo: logoUrl);
                                 },
                               );
                             },
@@ -367,6 +398,7 @@ class ListBottomSheet extends StatelessWidget {
 
   Widget _buildCafeItem({
     required String name,
+    required String logo,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -378,10 +410,20 @@ class ListBottomSheet extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
               color: Colors.grey[800],
+              image: logo.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(logo),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
-            child: const Center(
-              child: Icon(Icons.image, color: Colors.white38, size: 24),
-            ),
+            child: logo.isEmpty
+                ? const Icon(
+                    Icons.local_cafe,
+                    color: Colors.white70,
+                    size: 24,
+                  )
+                : null,
           ),
           const SizedBox(width: 16),
           TextWidget(

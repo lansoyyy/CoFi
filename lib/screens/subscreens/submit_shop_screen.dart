@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 
@@ -22,6 +25,12 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController websiteController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+
+  // Image picker related variables
+  final ImagePicker _picker = ImagePicker();
+  File? _selectedImage;
+  List<File> _galleryImages = [];
+  bool _isUploading = false;
 
   // Selected tags state
   Map<String, bool> selectedTags = {
@@ -92,7 +101,8 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
   Future<void> _loadExistingShop(String id) async {
     setState(() => _isLoadingExisting = true);
     try {
-      final snap = await FirebaseFirestore.instance.collection('shops').doc(id).get();
+      final snap =
+          await FirebaseFirestore.instance.collection('shops').doc(id).get();
       final data = snap.data() as Map<String, dynamic>?;
       if (data == null) return;
 
@@ -311,6 +321,23 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
           'updatedAt': FieldValue.serverTimestamp(),
         };
 
+        // Upload logo image if selected
+        if (_selectedImage != null) {
+          final imageUrl = await _uploadImageToFirebase(_editShopId!);
+          if (imageUrl != null) {
+            updateData['logoUrl'] = imageUrl;
+          }
+        }
+
+        // Upload gallery images if selected
+        if (_galleryImages.isNotEmpty) {
+          final galleryUrls =
+              await _uploadGalleryImagesToFirebase(_editShopId!);
+          if (galleryUrls.isNotEmpty) {
+            updateData['gallery'] = galleryUrls;
+          }
+        }
+
         await FirebaseFirestore.instance
             .collection('shops')
             .doc(_editShopId)
@@ -320,7 +347,7 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Shop updated successfully.')),
           );
-          Navigator.pushNamed(
+          Navigator.pushReplacementNamed(
             context,
             '/businessProfile',
             arguments: {
@@ -345,7 +372,6 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
           },
           // Daily schedule from UI state
           'schedule': _buildSchedulePayload(),
-          // Skip uploading logos and gallery images for now
           'logoUrl': null,
           'gallery': <String>[],
           'tags': _selectedTagsList(),
@@ -361,15 +387,30 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
           'menu': [],
         };
 
-        final ref = await FirebaseFirestore.instance
-            .collection('shops')
-            .add(data);
+        final ref =
+            await FirebaseFirestore.instance.collection('shops').add(data);
+
+        // Upload logo image if selected
+        if (_selectedImage != null) {
+          final imageUrl = await _uploadImageToFirebase(ref.id);
+          if (imageUrl != null) {
+            await ref.update({'logoUrl': imageUrl});
+          }
+        }
+
+        // Upload gallery images if selected
+        if (_galleryImages.isNotEmpty) {
+          final galleryUrls = await _uploadGalleryImagesToFirebase(ref.id);
+          if (galleryUrls.isNotEmpty) {
+            await ref.update({'gallery': galleryUrls});
+          }
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Shop submitted successfully.')),
           );
-          Navigator.pushNamed(
+          Navigator.pushReplacementNamed(
             context,
             '/businessProfile',
             arguments: {
@@ -417,350 +458,466 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
                 ),
               )
             : SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
 
-              // Posting as indicator
-              if (_currentUser != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.account_circle,
-                          color: Colors.white70, size: 18),
-                      const SizedBox(width: 8),
-                      TextWidget(
-                        text: 'Posting as ' +
-                            (_currentUser!.displayName?.isNotEmpty == true
-                                ? _currentUser!.displayName!
-                                : (_currentUser!.email ?? 'Anonymous')),
-                        fontSize: 13,
-                        color: Colors.white70,
-                        isBold: false,
-                      ),
-                    ],
-                  ),
-                ),
-
-              // Shop Logo Section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextWidget(
-                    text: 'Shop Logo',
-                    fontSize: 16,
-                    color: Colors.white,
-                    isBold: true,
-                  ),
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.local_cafe,
-                          color: Colors.red,
-                          size: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Shop Name
-              TextWidget(
-                text: 'Shop Name',
-                fontSize: 16,
-                color: Colors.white,
-                isBold: true,
-              ),
-              const SizedBox(height: 8),
-              Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.grey[900],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: TextField(
-                  controller: shopNameController,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: 'Sample Cafe Name',
-                    hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 16),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Address
-              TextWidget(
-                text: 'Address',
-                fontSize: 16,
-                color: Colors.white,
-                isBold: true,
-              ),
-              const SizedBox(height: 8),
-              Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.grey[900],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: TextField(
-                  controller: addressController,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: 'Davao City',
-                    hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 16),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Gallery
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextWidget(
-                    text: 'Gallery',
-                    fontSize: 16,
-                    color: Colors.white,
-                    isBold: true,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Gallery Image
-              Row(
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.local_cafe,
-                          color: Colors.red,
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[800],
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(
-                      Icons.add,
-                      color: Colors.white54,
-                      size: 20,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-
-              // About Me
-              TextWidget(
-                text: 'About the Shop',
-                fontSize: 16,
-                color: Colors.white,
-                isBold: true,
-              ),
-              const SizedBox(height: 8),
-              Container(
-                height: 150,
-                decoration: BoxDecoration(
-                  color: Colors.grey[900],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: TextField(
-                  controller: aboutController,
-                  maxLines: 4,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText:
-                        'Lorem ipsum dolor sit amet consectetur. Lacus lectus ullamcorper lorem tellus sagittis. Tellus morbi pellentesque tortor pellentesque vitae nec dui sit.',
-                    hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.all(16),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Contacts
-              TextWidget(
-                text: 'Contacts',
-                fontSize: 16,
-                color: Colors.white,
-                isBold: true,
-              ),
-              const SizedBox(height: 16),
-
-              // Instagram
-              _buildContactField(
-                icon: Icons.camera_alt,
-                controller: instagramController,
-                label: 'Instagram',
-              ),
-              const SizedBox(height: 12),
-
-              // Facebook
-              _buildContactField(
-                icon: Icons.facebook,
-                controller: facebookController,
-                label: 'Facebook',
-              ),
-              const SizedBox(height: 12),
-
-              // TikTok
-              _buildContactField(
-                icon: Icons.music_note,
-                controller: tiktokController,
-                label: 'Tiktok',
-              ),
-              const SizedBox(height: 32),
-
-              // Select Tags
-              TextWidget(
-                text: 'Select Tags',
-                fontSize: 16,
-                color: Colors.white,
-                isBold: true,
-              ),
-              const SizedBox(height: 16),
-
-              // Tags Grid
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: selectedTags.keys.map((tag) {
-                  return _buildTag(tag, selectedTags[tag]!);
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
-
-              // Daily Schedule Section
-              _buildScheduleSection(),
-
-              const SizedBox(height: 40),
-
-              // Location requirement notice
-              if (!_locationReady)
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.amber.withOpacity(0.4)),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.location_off, color: Colors.amber, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    // Posting as indicator
+                    if (_currentUser != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
                           children: [
-                            const Text(
-                              'Location required',
-                              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                            const Icon(Icons.account_circle,
+                                color: Colors.white70, size: 18),
+                            const SizedBox(width: 8),
+                            TextWidget(
+                              text: 'Posting as ' +
+                                  (_currentUser!.displayName?.isNotEmpty == true
+                                      ? _currentUser!.displayName!
+                                      : (_currentUser!.email ?? 'Anonymous')),
+                              fontSize: 13,
+                              color: Colors.white70,
+                              isBold: false,
                             ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Please enable Location Services and grant permission to proceed.',
-                              style: TextStyle(color: Colors.white70, fontSize: 12),
-                            ),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: TextButton(
-                                onPressed: _ensureLocationReady,
-                                child: const Text('Fix', style: TextStyle(fontSize: 12)),
-                              ),
-                            )
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
 
-              // Save Button
-              Container(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: (_isSaving || !_locationReady) ? null : _submitShop,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                  ),
-                  child: _isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : TextWidget(
-                          text: _locationReady ? (_isEditing ? 'Update' : 'Save') : 'Enable Location',
+                    // Shop Logo Section
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextWidget(
+                          text: 'Shop Logo',
                           fontSize: 16,
                           color: Colors.white,
                           isBold: true,
                         ),
+                        GestureDetector(
+                          onTap: _isUploading ? null : _pickImage,
+                          child: Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: primary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: _isUploading
+                                ? const Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
+                                      ),
+                                    ),
+                                  )
+                                : _selectedImage != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.file(
+                                          _selectedImage!,
+                                          width: 60,
+                                          height: 60,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : Center(
+                                        child: Icon(
+                                          Icons.add_a_photo,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                      ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Shop Name
+                    TextWidget(
+                      text: 'Shop Name',
+                      fontSize: 16,
+                      color: Colors.white,
+                      isBold: true,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[900],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextField(
+                        controller: shopNameController,
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 14),
+                        decoration: InputDecoration(
+                          hintText: 'Sample Cafe Name',
+                          hintStyle:
+                              TextStyle(color: Colors.grey[500], fontSize: 14),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Address
+                    TextWidget(
+                      text: 'Address',
+                      fontSize: 16,
+                      color: Colors.white,
+                      isBold: true,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[900],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextField(
+                        controller: addressController,
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 14),
+                        decoration: InputDecoration(
+                          hintText: 'Davao City',
+                          hintStyle:
+                              TextStyle(color: Colors.grey[500], fontSize: 14),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Gallery
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextWidget(
+                          text: 'Gallery',
+                          fontSize: 16,
+                          color: Colors.white,
+                          isBold: true,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Gallery Images
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _isUploading ? null : _pickGalleryImages,
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: primary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: _isUploading
+                                ? const Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
+                                      ),
+                                    ),
+                                  )
+                                : Center(
+                                    child: Icon(
+                                      Icons.add_a_photo,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        ..._galleryImages.asMap().entries.map((entry) {
+                          int idx = entry.key;
+                          File image = entry.value;
+                          return Container(
+                            width: 80,
+                            height: 80,
+                            margin: EdgeInsets.only(
+                                right:
+                                    idx == _galleryImages.length - 1 ? 0 : 16),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.file(
+                                image,
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    // About Me
+                    TextWidget(
+                      text: 'About the Shop',
+                      fontSize: 16,
+                      color: Colors.white,
+                      isBold: true,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 150,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[900],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextField(
+                        controller: aboutController,
+                        maxLines: 4,
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 14),
+                        decoration: InputDecoration(
+                          hintText: '',
+                          hintStyle:
+                              TextStyle(color: Colors.grey[500], fontSize: 14),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.all(16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Contacts
+                    TextWidget(
+                      text: 'Contacts',
+                      fontSize: 16,
+                      color: Colors.white,
+                      isBold: true,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Instagram
+                    _buildContactField(
+                      icon: Icons.camera_alt,
+                      controller: instagramController,
+                      label: 'Instagram',
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Facebook
+                    _buildContactField(
+                      icon: Icons.facebook,
+                      controller: facebookController,
+                      label: 'Facebook',
+                    ),
+                    const SizedBox(height: 12),
+
+                    // TikTok
+                    _buildContactField(
+                      icon: Icons.music_note,
+                      controller: tiktokController,
+                      label: 'Tiktok',
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Select Tags
+                    TextWidget(
+                      text: 'Select Tags',
+                      fontSize: 16,
+                      color: Colors.white,
+                      isBold: true,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Tags Grid
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: selectedTags.keys.map((tag) {
+                        return _buildTag(tag, selectedTags[tag]!);
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Daily Schedule Section
+                    _buildScheduleSection(),
+
+                    const SizedBox(height: 40),
+
+                    // Location requirement notice
+                    if (!_locationReady)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border:
+                              Border.all(color: Colors.amber.withOpacity(0.4)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.location_off,
+                                color: Colors.amber, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Location required',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Please enable Location Services and grant permission to proceed.',
+                                    style: TextStyle(
+                                        color: Colors.white70, fontSize: 12),
+                                  ),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: TextButton(
+                                      onPressed: _ensureLocationReady,
+                                      child: const Text('Fix',
+                                          style: TextStyle(fontSize: 12)),
+                                    ),
+                                  )
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Save Button
+                    Container(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed:
+                            (_isSaving || !_locationReady) ? null : _submitShop,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                        ),
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              )
+                            : TextWidget(
+                                text: _locationReady
+                                    ? (_isEditing ? 'Update' : 'Save')
+                                    : 'Enable Location',
+                                fontSize: 16,
+                                color: Colors.white,
+                                isBold: true,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
                 ),
               ),
-              const SizedBox(height: 32),
-            ],
-          ),
-        ),
       ),
     );
+  }
+
+  Future<String?> _uploadImageToFirebase(String shopId) async {
+    if (_selectedImage == null) return null;
+
+    try {
+      setState(() {
+        _isUploading = true;
+      });
+
+      final fileName =
+          'shop_${shopId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final storageRef =
+          FirebaseStorage.instance.ref().child('shop_images').child(fileName);
+
+      final uploadTask = storageRef.putFile(_selectedImage!);
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      return downloadUrl;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload image: $e')),
+      );
+      return null;
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
+    }
+  }
+
+  Future<List<String>> _uploadGalleryImagesToFirebase(String shopId) async {
+    List<String> downloadUrls = [];
+
+    if (_galleryImages.isEmpty) return downloadUrls;
+
+    try {
+      setState(() {
+        _isUploading = true;
+      });
+
+      for (int i = 0; i < _galleryImages.length; i++) {
+        final fileName =
+            'gallery_${shopId}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+        final storageRef =
+            FirebaseStorage.instance.ref().child('shop_images').child(fileName);
+
+        final uploadTask = storageRef.putFile(_galleryImages[i]);
+        final snapshot = await uploadTask;
+        final downloadUrl = await snapshot.ref.getDownloadURL();
+        downloadUrls.add(downloadUrl);
+      }
+
+      return downloadUrls;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload gallery images: $e')),
+      );
+      return [];
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
+    }
   }
 
   Map<String, dynamic> _buildSchedulePayload() {
@@ -925,6 +1082,43 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
       setState(() {
         _schedule[dayKey]![field] = picked;
       });
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to pick image: $e')),
+      );
+    }
+  }
+
+  Future<void> _pickGalleryImages() async {
+    try {
+      final List<XFile> pickedFiles = await _picker.pickMultiImage(
+        imageQuality: 80,
+      );
+
+      if (pickedFiles.isNotEmpty) {
+        setState(() {
+          _galleryImages = pickedFiles.map((file) => File(file.path)).toList();
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to pick images: $e')),
+      );
     }
   }
 

@@ -79,6 +79,7 @@ class MapViewScreen extends StatelessWidget {
                 child: GestureDetector(
                   onTap: () {
                     CoffeeShopDetailsBottomSheet.show(
+                      imageUrl: data['gallery'][0],
                       context,
                       shopId: doc.id,
                       name: name,

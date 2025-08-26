@@ -1,18 +1,23 @@
 import 'package:cofi/utils/colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../widgets/text_widget.dart';
 
 class ReviewShopScreen extends StatefulWidget {
   final String shopId;
   final String shopName;
   final String shopAddress;
+  final String logo;
 
   const ReviewShopScreen(
       {Key? key,
       required this.shopId,
       required this.shopName,
+      required this.logo,
       required this.shopAddress})
       : super(key: key);
 
@@ -25,6 +30,9 @@ class _ReviewShopScreenState extends State<ReviewShopScreen> {
   final Set<String> _selectedTags = <String>{};
   final _textCtrl = TextEditingController();
   bool _submitting = false;
+  final ImagePicker _picker = ImagePicker();
+  File? _selectedImage;
+  bool _isUploading = false;
 
   final List<String> _availableTags = const [
     'Business Meeting',
@@ -37,6 +45,55 @@ class _ReviewShopScreenState extends State<ReviewShopScreen> {
   void dispose() {
     _textCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to pick image: $e')),
+      );
+    }
+  }
+
+  Future<String?> _uploadImageToFirebase() async {
+    if (_selectedImage == null) return null;
+
+    try {
+      setState(() {
+        _isUploading = true;
+      });
+
+      final fileName =
+          'review_${widget.shopId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final storageRef =
+          FirebaseStorage.instance.ref().child('review_images').child(fileName);
+
+      final uploadTask = storageRef.putFile(_selectedImage!);
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      return downloadUrl;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload image: $e')),
+      );
+      return null;
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
+    }
   }
 
   Future<void> _submit() async {
@@ -54,6 +111,13 @@ class _ReviewShopScreenState extends State<ReviewShopScreen> {
             content: Text('Please sign in to submit a review.')));
         return;
       }
+
+      // Upload image if selected
+      String? imageUrl;
+      if (_selectedImage != null) {
+        imageUrl = await _uploadImageToFirebase();
+      }
+
       final reviewMap = {
         'userId': user.uid,
         'authorName': user.displayName ?? (user.email ?? 'User'),
@@ -61,6 +125,7 @@ class _ReviewShopScreenState extends State<ReviewShopScreen> {
         'text': _textCtrl.text.trim(),
         'tags': _selectedTags.toList(),
         'createdAt': FieldValue.serverTimestamp(),
+        if (imageUrl != null) 'imageUrl': imageUrl,
       };
       // Subcollection write
       final shopRef =
@@ -75,11 +140,13 @@ class _ReviewShopScreenState extends State<ReviewShopScreen> {
             'text': reviewMap['text'],
             'tags': reviewMap['tags'],
             'createdAt': Timestamp.now(),
+            if (imageUrl != null) 'imageUrl': imageUrl,
           }
         ])
       }).catchError((_) {});
 
       if (!mounted) return;
+      Navigator.pop(context);
       Navigator.pop(context);
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Review submitted')));
@@ -126,9 +193,8 @@ class _ReviewShopScreenState extends State<ReviewShopScreen> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
                       color: Colors.grey[800],
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.image, color: Colors.white38, size: 24),
+                      image: DecorationImage(
+                          image: NetworkImage(widget.logo), fit: BoxFit.cover),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -241,13 +307,41 @@ class _ReviewShopScreenState extends State<ReviewShopScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8), color: primary),
-                    child: const Center(
-                      child: Icon(Icons.add, color: Colors.white, size: 24),
+                  GestureDetector(
+                    onTap: _isUploading ? null : _pickImage,
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: primary,
+                      ),
+                      child: _isUploading
+                          ? const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              ),
+                            )
+                          : _selectedImage != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(
+                                    _selectedImage!,
+                                    width: 48,
+                                    height: 48,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : const Center(
+                                  child: Icon(Icons.add,
+                                      color: Colors.white, size: 24),
+                                ),
                     ),
                   ),
                   const SizedBox(width: 16),

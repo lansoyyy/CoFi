@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../widgets/text_widget.dart';
 import '../../utils/colors.dart';
 import 'reviews_screen.dart';
@@ -84,7 +87,60 @@ class CafeDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = shop ?? const <String, dynamic>{};
+    // If we have a shopId, fetch the latest data from Firestore
+    if (shopId != null && shopId!.isNotEmpty) {
+      return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
+            .collection('shops')
+            .doc(shopId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              backgroundColor: Colors.black,
+              body: Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return Scaffold(
+              backgroundColor: Colors.black,
+              body: Center(
+                child: TextWidget(
+                  text: 'Error loading shop details',
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
+              ),
+            );
+          }
+
+          final data = snapshot.data?.data();
+          if (data == null) {
+            return Scaffold(
+              backgroundColor: Colors.black,
+              body: Center(
+                child: TextWidget(
+                  text: 'Shop not found',
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
+              ),
+            );
+          }
+
+          return _buildContent(context, data);
+        },
+      );
+    }
+
+    // If we don't have a shopId, use the provided shop data
+    return _buildContent(context, shop ?? const <String, dynamic>{});
+  }
+
+  Widget _buildContent(BuildContext context, Map<String, dynamic> s) {
     final String name = (s['name'] ?? '') as String;
     final String address = (s['address'] ?? '') as String;
     final String about = (s['about'] ?? '') as String;
@@ -98,6 +154,16 @@ class CafeDetailsScreen extends StatelessWidget {
     final String scheduleText = _scheduleToText(schedule);
     final Map<String, dynamic> contacts =
         (s['contacts'] ?? {}) as Map<String, dynamic>;
+
+    // Get location data
+    final double latitude =
+        (s['latitude'] is num) ? s['latitude'].toDouble() : 0.0;
+    final double longitude =
+        (s['longitude'] is num) ? s['longitude'].toDouble() : 0.0;
+
+    // Get logo URL
+    final String? logoUrl = s['logoUrl'] as String?;
+
     // Build contacts with links
     final List<_ContactItem> contactItems = [];
     void addContact(String label, dynamic value) {
@@ -119,15 +185,30 @@ class CafeDetailsScreen extends StatelessWidget {
       body: SafeArea(
         child: ListView(
           children: [
-            // Image placeholder
+            // Image section with logo
             Stack(
               children: [
                 Container(
                   height: 400,
                   color: Colors.grey[800],
-                  child: const Center(
-                    child: Icon(Icons.image, color: Colors.white38, size: 60),
-                  ),
+                  child: logoUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: logoUrl,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: 400,
+                          placeholder: (context, url) => const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          errorWidget: (context, url, error) => const Center(
+                            child: Icon(Icons.image,
+                                color: Colors.white38, size: 60),
+                          ),
+                        )
+                      : const Center(
+                          child: Icon(Icons.image,
+                              color: Colors.white38, size: 60),
+                        ),
                 ),
                 Positioned(
                   top: 16,
@@ -190,14 +271,19 @@ class CafeDetailsScreen extends StatelessWidget {
             SizedBox(
               height: 10,
             ),
+            // Map section
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Container(
                 height: 250,
-                color: Colors.grey[800],
-                child: const Center(
-                  child: Icon(Icons.map, color: Colors.white38, size: 60),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
                 ),
+                child: latitude != 0.0 && longitude != 0.0
+                    ? _buildMap(latitude, longitude)
+                    : const Center(
+                        child: Icon(Icons.map, color: Colors.white38, size: 60),
+                      ),
               ),
             ),
             const SizedBox(height: 32),
@@ -572,14 +658,148 @@ class CafeDetailsScreen extends StatelessWidget {
               final tags = (m['tags'] is List)
                   ? (m['tags'] as List).cast<String>()
                   : <String>[];
+              final imageUrl = m['imageUrl'] as String?;
               return _buildReviewCard(
                 name: name,
                 review: review.isNotEmpty ? review : '—',
                 tags: tags,
                 imagePath: 'assets/images/review_placeholder.jpg',
+                imageUrl: imageUrl,
               );
             }).toList(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildReviewCard({
+    required String name,
+    required String review,
+    required List<String> tags,
+    required String imagePath,
+    String? imageUrl,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: const BoxDecoration(
+                    color: primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextWidget(
+                      text: name,
+                      fontSize: 16,
+                      color: Colors.white,
+                      isBold: true,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Row(
+                          children: List.generate(
+                            5,
+                            (index) => const Icon(Icons.star,
+                                color: Colors.amber, size: 16),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 10,
+                        ),
+                        TextWidget(
+                          text: ' week ago',
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              children: tags
+                  .map((tag) => Chip(
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(100)),
+                        label: TextWidget(
+                          text: tag,
+                          fontSize: 12,
+                          color: Colors.white,
+                        ),
+                        backgroundColor: Colors.grey[800],
+                      ))
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+            TextWidget(
+              text: review,
+              fontSize: 14,
+              color: Colors.white70,
+            ),
+            const SizedBox(height: 16),
+            if (imageUrl != null && imageUrl.isNotEmpty)
+              Container(
+                height: 120,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    errorWidget: (context, url, error) => const Center(
+                      child: Icon(Icons.image, color: Colors.white38, size: 60),
+                    ),
+                  ),
+                ),
+              )
+            else
+              Container(
+                height: 120,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.grey[800],
+                ),
+                child: const Center(
+                  child: Icon(Icons.image, color: Colors.white38, size: 60),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -682,122 +902,19 @@ class CafeDetailsScreen extends StatelessWidget {
                   final tags = (m['tags'] is List)
                       ? (m['tags'] as List).cast<String>()
                       : <String>[];
+                  final imageUrl = m['imageUrl'] as String?;
                   return _buildReviewCard(
                     name: name,
                     review: review.isNotEmpty ? review : '—',
                     tags: tags,
                     imagePath: 'assets/images/review_placeholder.jpg',
+                    imageUrl: imageUrl,
                   );
                 }).toList(),
             ],
           ),
         );
       },
-    );
-  }
-
-  Widget _buildReviewCard({
-    required String name,
-    required String review,
-    required List<String> tags,
-    required String imagePath,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[900],
-          borderRadius: BorderRadius.circular(16),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: const BoxDecoration(
-                    color: primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child:
-                        Icon(Icons.location_on, color: Colors.white, size: 24),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextWidget(
-                      text: name,
-                      fontSize: 16,
-                      color: Colors.white,
-                      isBold: true,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Row(
-                          children: List.generate(
-                            5,
-                            (index) => const Icon(Icons.star,
-                                color: Colors.amber, size: 16),
-                          ),
-                        ),
-                        SizedBox(
-                          width: 10,
-                        ),
-                        TextWidget(
-                          text: '1 week ago',
-                          fontSize: 12,
-                          color: Colors.white70,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              children: tags
-                  .map((tag) => Chip(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(100)),
-                        label: TextWidget(
-                          text: tag,
-                          fontSize: 12,
-                          color: Colors.white,
-                        ),
-                        backgroundColor: Colors.grey[800],
-                      ))
-                  .toList(),
-            ),
-            const SizedBox(height: 16),
-            TextWidget(
-              text: review,
-              fontSize: 14,
-              color: Colors.white70,
-            ),
-            const SizedBox(height: 16),
-            Container(
-              height: 120,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.grey[800],
-              ),
-              child: const Center(
-                child: Icon(Icons.image, color: Colors.white38, size: 60),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -844,10 +961,12 @@ class CafeDetailsScreen extends StatelessWidget {
                   final sm = shop ?? const <String, dynamic>{};
                   final _shopName = (sm['name'] ?? '').toString();
                   final _shopAddress = (sm['address'] ?? '').toString();
+                  final logo = (sm['logoUrl'] ?? '').toString();
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => LogVisitScreen(
+                        logo: logo,
                         shopId: shopId ?? '',
                         shopName: _shopName,
                         shopAddress: _shopAddress,
@@ -879,10 +998,12 @@ class CafeDetailsScreen extends StatelessWidget {
                   final sm = shop ?? const <String, dynamic>{};
                   final _shopName = (sm['name'] ?? '').toString();
                   final _shopAddress = (sm['address'] ?? '').toString();
+                  final logo = (sm['logoUrl'] ?? '').toString();
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => WriteReviewScreen(
+                        logo: logo,
                         shopId: shopId ?? '',
                         shopName: _shopName,
                         shopAddress: _shopAddress,
@@ -912,6 +1033,36 @@ class CafeDetailsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMap(double latitude, double longitude) {
+    return FlutterMap(
+      options: MapOptions(
+        initialCenter: LatLng(latitude, longitude),
+        initialZoom: 15.0,
+        interactionOptions: InteractionOptions(flags: InteractiveFlag.none),
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.example.cofi',
+        ),
+        MarkerLayer(
+          markers: [
+            Marker(
+              width: 80.0,
+              height: 80.0,
+              point: LatLng(latitude, longitude),
+              child: const Icon(
+                Icons.location_on,
+                color: Colors.red,
+                size: 40,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

@@ -8,10 +8,12 @@ class LogVisitScreen extends StatefulWidget {
   final String shopId;
   final String shopName;
   final String shopAddress;
+  final String logo;
 
   const LogVisitScreen(
       {Key? key,
       required this.shopId,
+      required this.logo,
       required this.shopName,
       required this.shopAddress})
       : super(key: key);
@@ -54,10 +56,7 @@ class _LogVisitScreenState extends State<LogVisitScreen> {
 
       // Also record this shopId in the user's `visited` array so counts match Explore/Collections
       try {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .set({
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'visited': FieldValue.arrayUnion([widget.shopId])
         }, SetOptions(merge: true));
       } catch (_) {
@@ -110,9 +109,12 @@ class _LogVisitScreenState extends State<LogVisitScreen> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     color: Colors.grey[800],
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.image, color: Colors.white38, size: 24),
+                    image: widget.logo.isNotEmpty
+                        ? DecorationImage(
+                            image: NetworkImage(widget.logo),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
                 ),
                 const SizedBox(width: 16),

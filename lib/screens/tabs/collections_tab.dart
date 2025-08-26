@@ -122,7 +122,7 @@ class _CollectionsTabState extends State<CollectionsTab> {
                   icon: Icons.bookmark_border,
                   iconBg: primary,
                   title: 'Favorites',
-                  subtitle: '$count Shop${count == 1 ? '' : 's'}',
+                  subtitle: 'Favorite Shop${count == 1 ? '' : 's'}',
                   onTap: () {
                     final user = FirebaseAuth.instance.currentUser;
                     if (user == null) return;

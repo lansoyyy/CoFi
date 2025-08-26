@@ -368,8 +368,7 @@ class ListBottomSheet extends StatelessWidget {
 
                                   if (!shopSnap.hasData ||
                                       !shopSnap.data!.exists) {
-                                    return _buildCafeItem(
-                                        name: 'Cafe', logo: '');
+                                    return SizedBox();
                                   }
 
                                   final shopData = shopSnap.data!.data();

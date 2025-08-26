@@ -208,9 +208,9 @@ class _ExploreTabState extends State<ExploreTab> {
   @override
   Widget build(BuildContext context) {
     final filterChips = [
-      'Open now',
-      'Newest',
       'Popular',
+      'Newest',
+      'Open now',
     ];
 
     return ListView(
@@ -760,7 +760,7 @@ class _ExploreTabState extends State<ExploreTab> {
 
     // Chip filters: 0 Open now, 1 Newest, 2 Popular
     switch (_selectedChip) {
-      case 0: // Open now
+      case 2: // Open now
         list.retainWhere((d) => _isOpenNowFromSchedule(
             (d.data()['schedule'] ?? {}) as Map<String, dynamic>));
         break;
@@ -776,7 +776,7 @@ class _ExploreTabState extends State<ExploreTab> {
                   : DateTime.fromMillisecondsSinceEpoch(0)));
         });
         break;
-      case 2: // Popular by ratings then reviews count
+      case 0: // Popular by ratings then reviews count
         list.sort((a, b) {
           num ra =
               (a.data()['ratings'] is num) ? a.data()['ratings'] as num : 0;

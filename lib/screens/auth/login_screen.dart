@@ -1,4 +1,5 @@
 import 'package:cofi/screens/home_screen.dart';
+import 'package:cofi/services/google_sign_in_service.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -18,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isGoogleSigningIn = false;
 
   @override
   void dispose() {
@@ -61,6 +63,38 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isGoogleSigningIn = true;
+    });
+
+    try {
+      final userCredential = await GoogleSignInService.signInWithGoogle();
+
+      if (userCredential != null && mounted) {
+        // Navigate to home screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Google sign in failed: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGoogleSigningIn = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 20),
                   // Logo
@@ -90,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Headline
                   Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       TextWidget(
                         text: 'Find Cafes',
@@ -108,7 +142,49 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 60),
+                  const SizedBox(height: 40),
+
+                  // Google Login Button
+                  _buildSocialButton(
+                    icon: FontAwesomeIcons.google,
+                    text: _isGoogleSigningIn
+                        ? 'Signing in...'
+                        : 'Continue with Google',
+                    backgroundColor: Colors.white,
+                    textColor: Colors.white,
+                    iconColor: Colors.red,
+                    onPressed: _isGoogleSigningIn ? null : _handleGoogleSignIn,
+                  ),
+                  const SizedBox(height: 25),
+
+                  // Separator
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: TextWidget(
+                          text: 'or',
+                          fontSize: 16,
+                          color: Colors.grey[500]!,
+                          align: TextAlign.center,
+                        ),
+                      ),
+                      Expanded(
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 25),
+
                   Form(
                     key: _formKey,
                     child: Column(
@@ -196,6 +272,66 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSocialButton({
+    required IconData icon,
+    required String text,
+    required Color backgroundColor,
+    required Color textColor,
+    required Color iconColor,
+    VoidCallback? onPressed,
+  }) {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        color: backgroundColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: Colors.grey.withOpacity(0.5)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(100),
+          onTap: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FaIcon(
+                  icon,
+                  color: iconColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 15),
+                TextWidget(
+                  text: text,
+                  fontSize: 16,
+                  color: Colors.white,
+                  align: TextAlign.center,
+                  isBold: true,
+                ),
+                // Show loading indicator if signing in
+                if (_isGoogleSigningIn)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 10),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),

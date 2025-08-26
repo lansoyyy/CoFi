@@ -12,7 +12,20 @@
           "package_name": "com.example.cofi"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1033537657456-ed9p2b2tpmpi5khrf5kv7g4i8akej8na.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.cofi",
+            "certificate_hash": "8706e5913746a4d7bc95d0c17d5ba9d3dbac96f3"
+          }
+        },
+        {
+          "client_id": "1033537657456-1emqogt8mlh95et8v2gafbpttdlbj812.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyA-4pJQPA1VQ8o4URW4JqwiNTdBx9eS2HU"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1033537657456-1emqogt8mlh95et8v2gafbpttdlbj812.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

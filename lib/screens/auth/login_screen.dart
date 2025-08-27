@@ -1,3 +1,4 @@
+import 'package:cofi/screens/auth/signup_screen.dart';
 import 'package:cofi/screens/home_screen.dart';
 import 'package:cofi/services/google_sign_in_service.dart';
 import 'package:flutter/material.dart';
@@ -109,81 +110,36 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 30),
                   // Logo
                   Center(
                     child: Image.asset(
                       'assets/images/logo.png',
-                      width: 125,
-                      height: 125,
+                      width: 150,
+                      height: 120,
                       fit: BoxFit.contain,
                     ),
                   ),
+                  const SizedBox(height: 20),
 
-                  // Headline
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      TextWidget(
-                        text: 'Find Cafes',
-                        fontSize: 48,
-                        color: Colors.grey[300]!,
-                        align: TextAlign.center,
-                        isBold: true,
-                      ),
-                      TextWidget(
-                        text: 'you love',
-                        fontSize: 48,
-                        color: Colors.grey[300]!,
-                        align: TextAlign.center,
-                        isBold: true,
-                      ),
-                    ],
+                  // Headline - Find Cafes you love
+                  TextWidget(
+                    text: 'Find Cafes',
+                    fontSize: 48,
+                    color: Colors.grey[400]!,
+                    align: TextAlign.left,
+                    isBold: true,
                   ),
-                  const SizedBox(height: 40),
-
-                  // Google Login Button
-                  _buildSocialButton(
-                    icon: FontAwesomeIcons.google,
-                    text: _isGoogleSigningIn
-                        ? 'Signing in...'
-                        : 'Continue with Google',
-                    backgroundColor: Colors.white,
-                    textColor: Colors.white,
-                    iconColor: Colors.red,
-                    onPressed: _isGoogleSigningIn ? null : _handleGoogleSignIn,
+                  TextWidget(
+                    text: 'you love',
+                    fontSize: 48,
+                    color: Colors.grey[400]!,
+                    align: TextAlign.left,
+                    isBold: true,
                   ),
-                  const SizedBox(height: 25),
-
-                  // Separator
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: TextWidget(
-                          text: 'or',
-                          fontSize: 16,
-                          color: Colors.grey[500]!,
-                          align: TextAlign.center,
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 30),
 
                   Form(
                     key: _formKey,
@@ -192,12 +148,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Email Field
                         Container(
                           width: double.infinity,
-                          height: 56,
+                          height: 50,
                           decoration: BoxDecoration(
-                            color: Colors.black54,
+                            color: Colors.grey[800],
                             borderRadius: BorderRadius.circular(100),
-                            border: Border.all(
-                                color: Colors.white.withOpacity(0.2)),
                           ),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -207,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: const TextStyle(color: Colors.white),
                               decoration: const InputDecoration(
                                 hintText: 'Email',
-                                hintStyle: TextStyle(color: Colors.white70),
+                                hintStyle: TextStyle(color: Colors.grey),
                                 border: InputBorder.none,
                               ),
                               validator: (v) {
@@ -224,12 +178,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Password Field
                         Container(
                           width: double.infinity,
-                          height: 56,
+                          height: 50,
                           decoration: BoxDecoration(
-                            color: Colors.black54,
+                            color: Colors.grey[800],
                             borderRadius: BorderRadius.circular(100),
-                            border: Border.all(
-                                color: Colors.white.withOpacity(0.2)),
                           ),
                           child: Padding(
                               padding:
@@ -240,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: const TextStyle(color: Colors.white),
                                 decoration: const InputDecoration(
                                   hintText: 'Password',
-                                  hintStyle: TextStyle(color: Colors.white70),
+                                  hintStyle: TextStyle(color: Colors.grey),
                                   border: InputBorder.none,
                                 ),
                                 validator: (v) {
@@ -257,17 +209,79 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
+
+                  // Divider
+                  Container(height: 1, color: Colors.grey[800]),
+
                   // Login Button
+                  const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
-                    height: 56,
+                    height: 60,
                     child: ButtonWidget(
                       label: _isLoading ? 'Logging in...' : 'Login',
                       fontSize: 16,
-                      color: Colors.red[700]!,
+                      color: primary,
                       textColor: Colors.white,
+                      radius: 100,
                       onPressed: _isLoading ? () {} : () => _login(),
+                    ),
+                  ),
+
+                  // Divider with "or"
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                          child: Container(height: 1, color: Colors.grey[800])),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: TextWidget(
+                          text: 'or',
+                          fontSize: 14,
+                          color: Colors.grey[500]!,
+                          align: TextAlign.center,
+                        ),
+                      ),
+                      Expanded(
+                          child: Container(height: 1, color: Colors.grey[800])),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Google Login Button
+                  _buildGoogleSignInButton(),
+
+                  // Sign Up Link
+                  const SizedBox(height: 20),
+                  Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextWidget(
+                          text: "Don't have an account? ",
+                          fontSize: 16,
+                          color: Colors.grey[500]!,
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SignupScreen(),
+                              ),
+                            );
+                          },
+                          child: TextWidget(
+                            decoration: TextDecoration.underline,
+                            text: "Signup",
+                            fontSize: 16,
+                            color: Colors.white,
+                            isBold: true,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -279,40 +293,42 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildSocialButton({
-    required IconData icon,
-    required String text,
-    required Color backgroundColor,
-    required Color textColor,
-    required Color iconColor,
-    VoidCallback? onPressed,
-  }) {
+  Widget _buildGoogleSignInButton() {
     return Container(
       width: double.infinity,
-      height: 56,
+      height: 60,
       decoration: BoxDecoration(
-        color: backgroundColor.withOpacity(0.1),
+        color: Colors.black,
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: Colors.grey.withOpacity(0.5)),
+        border: Border.all(color: Colors.grey[700]!),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(100),
-          onTap: onPressed,
+          borderRadius: BorderRadius.circular(8),
+          onTap: _isGoogleSigningIn ? null : _handleGoogleSignIn,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                FaIcon(
-                  icon,
-                  color: iconColor,
-                  size: 20,
+                CircleAvatar(
+                  radius: 10,
+                  backgroundColor: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(2.0),
+                    child: FaIcon(
+                      FontAwesomeIcons.google,
+                      color: Colors.red,
+                      size: 15,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 15),
+                const SizedBox(width: 12),
                 TextWidget(
-                  text: text,
+                  text: _isGoogleSigningIn
+                      ? 'Signing in...'
+                      : 'Continue with Google',
                   fontSize: 16,
                   color: Colors.white,
                   align: TextAlign.center,
@@ -323,8 +339,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   const Padding(
                     padding: EdgeInsets.only(left: 10),
                     child: SizedBox(
-                      width: 20,
-                      height: 20,
+                      width: 16,
+                      height: 16,
                       child: CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         strokeWidth: 2,

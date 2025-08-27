@@ -1,3 +1,4 @@
+import 'package:cofi/screens/auth/login_screen.dart';
 import 'package:flutter/material.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
@@ -23,7 +24,7 @@ class _SplashScreenState extends State<SplashScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => const LandingScreen(),
+          builder: (context) => const LoginScreen(),
         ),
       );
     }

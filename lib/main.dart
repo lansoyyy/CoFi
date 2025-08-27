@@ -1,5 +1,6 @@
 import 'package:cofi/firebase_options.dart';
 import 'package:cofi/screens/auth/landing_screen.dart';
+import 'package:cofi/screens/auth/login_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -66,7 +67,7 @@ class AuthGate extends StatelessWidget {
         final user = snapshot.data;
         if (user == null) {
           // Not signed in -> show landing/login entry
-          return const LandingScreen();
+          return const SplashScreen();
         }
 
         // Signed in -> go home

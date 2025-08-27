@@ -34,16 +34,21 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
 
   // Selected tags state
   Map<String, bool> selectedTags = {
-    'Aesthetic': true,
+    'Specialty Coffee': true,
     'Matcha Drinks': false,
-    'Cozy & Chill': false,
-    'Community Hub': false,
-    'Newly Opened': false,
-    'Free Wifi': false,
-    'Pet Friendly': false,
-    'Power Outlets': false,
-    'Parking Spaces': false,
-    'Study-Friendly': false,
+    'Pastries': false,
+    'Work-Friendly (Wi-Fi + outlets)': false,
+    'Pet-Friendly': false,
+    'Parking Available': false,
+    'Family Friendly': false,
+    'Study Sessions': false,
+    'Night Café (Open Late)': false,
+    'Minimalist / Modern': false,
+    'Rustic / Cozy': false,
+    'Outdoor / Garden': false,
+    'Seaside / Scenic': false,
+    'Artsy / Aesthetic': false,
+    'Instagrammable': false,
   };
 
   bool _isSaving = false;

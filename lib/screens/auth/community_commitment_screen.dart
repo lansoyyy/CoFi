@@ -1,3 +1,4 @@
+import 'package:cofi/screens/auth/interest_selection_screen.dart';
 import 'package:cofi/screens/home_screen.dart';
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
@@ -38,7 +39,7 @@ class _CommunityCommitmentScreenState extends State<CommunityCommitmentScreen> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const InterestSelectionScreen()),
       );
     } catch (e) {
       if (mounted) {

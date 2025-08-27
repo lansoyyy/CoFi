@@ -16,7 +16,7 @@ class ExploreTab extends StatefulWidget {
 }
 
 class _ExploreTabState extends State<ExploreTab> {
-  int _selectedChip = 0;
+  int _selectedChip = -1; // Changed to -1 to indicate no selection by default
   bool _isOpenNow = false;
   bool _isOpenToday = false;
   bool _isFavorites = false;
@@ -29,6 +29,7 @@ class _ExploreTabState extends State<ExploreTab> {
   Stream<DocumentSnapshot<Map<String, dynamic>>>? _userStream;
   Set<String> _bookmarks = {};
   Set<String> _visited = {};
+  List<String> _userInterests = []; // New field to store user interests
 
   @override
   void initState() {
@@ -44,6 +45,32 @@ class _ExploreTabState extends State<ExploreTab> {
       final q = _searchCtrl.text.trim();
       if (q != _query) setState(() => _query = q);
     });
+    
+    // Fetch user interests
+    _fetchUserInterests();
+  }
+
+  // New method to fetch user interests
+  Future<void> _fetchUserInterests() async {
+    if (_user == null) return;
+    
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_user!.uid)
+          .get();
+      
+      if (userDoc.exists) {
+        final data = userDoc.data();
+        final interests = (data?['interests'] as List?)?.cast<String>() ?? [];
+        setState(() {
+          _userInterests = interests;
+        });
+      }
+    } catch (e) {
+      // Handle error silently or log it
+      print('Error fetching user interests: $e');
+    }
   }
 
   @override
@@ -264,11 +291,7 @@ class _ExploreTabState extends State<ExploreTab> {
                 _visited = vd.toSet();
               }
               return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                stream: FirebaseFirestore.instance
-                    .collection('shops')
-                    .orderBy('ratings', descending: true)
-                    .limit(10)
-                    .snapshots(),
+                stream: _getFeaturedShopsStream(),
                 builder: (context, snap) {
                   if (!snap.hasData) {
                     return const SizedBox(
@@ -362,10 +385,7 @@ class _ExploreTabState extends State<ExploreTab> {
                 _visited = vlist.toSet();
               }
               return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                stream: FirebaseFirestore.instance
-                    .collection('shops')
-                    .orderBy('postedAt', descending: true)
-                    .snapshots(),
+                stream: _getShopsStream(),
                 builder: (context, snap) {
                   if (snap.connectionState == ConnectionState.waiting) {
                     return const Center(
@@ -443,6 +463,162 @@ class _ExploreTabState extends State<ExploreTab> {
           ),
       ],
     );
+  }
+
+  // New method to get the appropriate stream for featured shops
+  Stream<QuerySnapshot<Map<String, dynamic>>> _getFeaturedShopsStream() {
+    // If we have user interests, show recommended shops
+    if (_userInterests.isNotEmpty && _selectedChip == -1) {
+      // Query shops that match user interests
+      return FirebaseFirestore.instance
+          .collection('shops')
+          .where('tags', arrayContainsAny: _userInterests)
+          .orderBy('ratings', descending: true)
+          .limit(10)
+          .snapshots();
+    } else {
+      // Default behavior based on selected chip
+      switch (_selectedChip) {
+        case 2: // Open now
+          return FirebaseFirestore.instance
+              .collection('shops')
+              .orderBy('ratings', descending: true)
+              .limit(10)
+              .snapshots();
+        case 1: // Newest
+          return FirebaseFirestore.instance
+              .collection('shops')
+              .orderBy('postedAt', descending: true)
+              .limit(10)
+              .snapshots();
+        case 0: // Popular (default)
+        default:
+          return FirebaseFirestore.instance
+              .collection('shops')
+              .orderBy('ratings', descending: true)
+              .limit(10)
+              .snapshots();
+      }
+    }
+  }
+
+  // New method to get the appropriate stream for regular shops
+  Stream<QuerySnapshot<Map<String, dynamic>>> _getShopsStream() {
+    // If we have user interests and no filter is selected, show recommended shops
+    if (_userInterests.isNotEmpty && _selectedChip == -1) {
+      // Query shops that match user interests
+      return FirebaseFirestore.instance
+          .collection('shops')
+          .where('tags', arrayContainsAny: _userInterests)
+          .orderBy('postedAt', descending: true)
+          .snapshots();
+    } else {
+      // Default behavior based on selected chip
+      switch (_selectedChip) {
+        case 1: // Newest
+          return FirebaseFirestore.instance
+              .collection('shops')
+              .orderBy('postedAt', descending: true)
+              .snapshots();
+        case 2: // Open now
+          return FirebaseFirestore.instance
+              .collection('shops')
+              .orderBy('postedAt', descending: true)
+              .snapshots();
+        case 0: // Popular (default)
+        default:
+          return FirebaseFirestore.instance
+              .collection('shops')
+              .orderBy('ratings', descending: true)
+              .snapshots();
+      }
+    }
+  }
+
+  // Modified filter method to handle recommendations
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _applyFilters(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    Iterable<QueryDocumentSnapshot<Map<String, dynamic>>> out = docs;
+
+    // Bottom sheet filters
+    if (_isFavorites) {
+      out = out.where((d) => _bookmarks.contains(d.id));
+    }
+    if (_isVisited) {
+      out = out.where((d) => _visited.contains(d.id));
+    }
+    if (_isOpenToday) {
+      out = out.where((d) => _isOpenTodayFromSchedule(
+          (d.data()['schedule'] ?? {}) as Map<String, dynamic>));
+    }
+    if (_isOpenNow) {
+      out = out.where((d) => _isOpenNowFromSchedule(
+          (d.data()['schedule'] ?? {}) as Map<String, dynamic>));
+    }
+
+    final list = out.toList();
+
+    // Search filter on name and address
+    if (_query.isNotEmpty) {
+      final q = _query.toLowerCase();
+      list.retainWhere((d) {
+        final name = ((d.data()['name'] ?? '') as String).toLowerCase();
+        final addr = ((d.data()['address'] ?? '') as String).toLowerCase();
+        return name.contains(q) || addr.contains(q);
+      });
+    }
+
+    // Chip filters: 0 Popular, 1 Newest, 2 Open now
+    // Only apply filtering when a chip is selected (not -1)
+    if (_selectedChip != -1) {
+      switch (_selectedChip) {
+        case 2: // Open now
+          list.retainWhere((d) => _isOpenNowFromSchedule(
+              (d.data()['schedule'] ?? {}) as Map<String, dynamic>));
+          break;
+        case 1: // Newest
+          list.sort((a, b) {
+            final ta = a.data()['postedAt'];
+            final tb = b.data()['postedAt'];
+            return (tb is Timestamp
+                    ? tb.toDate()
+                    : DateTime.fromMillisecondsSinceEpoch(0))
+                .compareTo((ta is Timestamp
+                    ? ta.toDate()
+                    : DateTime.fromMillisecondsSinceEpoch(0)));
+          });
+          break;
+        case 0: // Popular by ratings then reviews count
+          list.sort((a, b) {
+            num ra =
+                (a.data()['ratings'] is num) ? a.data()['ratings'] as num : 0;
+            num rb =
+                (b.data()['ratings'] is num) ? b.data()['ratings'] as num : 0;
+            if (rb != ra) return rb.compareTo(ra);
+            int ca = ((a.data()['reviews'] as List?)?.length ?? 0);
+            int cb = ((b.data()['reviews'] as List?)?.length ?? 0);
+            return cb.compareTo(ca);
+          });
+          break;
+        default:
+          break;
+      }
+    } else if (_userInterests.isNotEmpty) {
+      // When no filter is selected but we have user interests, we're showing recommendations
+      // Sort by ratings as default for recommendations
+      list.sort((a, b) {
+        num ra =
+            (a.data()['ratings'] is num) ? a.data()['ratings'] as num : 0;
+        num rb =
+            (b.data()['ratings'] is num) ? b.data()['ratings'] as num : 0;
+        if (rb != ra) return rb.compareTo(ra);
+        int ca = ((a.data()['reviews'] as List?)?.length ?? 0);
+        int cb = ((b.data()['reviews'] as List?)?.length ?? 0);
+        return cb.compareTo(ca);
+      });
+    }
+
+    return list;
   }
 
   Widget _buildFeaturedCard({
@@ -723,76 +899,6 @@ class _ExploreTabState extends State<ExploreTab> {
       return '${_to12h(open)} - ${_to12h(close)}';
     }
     return 'Closed today';
-  }
-
-  // Filters and helpers
-  List<QueryDocumentSnapshot<Map<String, dynamic>>> _applyFilters(
-      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
-    Iterable<QueryDocumentSnapshot<Map<String, dynamic>>> out = docs;
-
-    // Bottom sheet filters
-    if (_isFavorites) {
-      out = out.where((d) => _bookmarks.contains(d.id));
-    }
-    if (_isVisited) {
-      out = out.where((d) => _visited.contains(d.id));
-    }
-    if (_isOpenToday) {
-      out = out.where((d) => _isOpenTodayFromSchedule(
-          (d.data()['schedule'] ?? {}) as Map<String, dynamic>));
-    }
-    if (_isOpenNow) {
-      out = out.where((d) => _isOpenNowFromSchedule(
-          (d.data()['schedule'] ?? {}) as Map<String, dynamic>));
-    }
-
-    final list = out.toList();
-
-    // Search filter on name and address
-    if (_query.isNotEmpty) {
-      final q = _query.toLowerCase();
-      list.retainWhere((d) {
-        final name = ((d.data()['name'] ?? '') as String).toLowerCase();
-        final addr = ((d.data()['address'] ?? '') as String).toLowerCase();
-        return name.contains(q) || addr.contains(q);
-      });
-    }
-
-    // Chip filters: 0 Open now, 1 Newest, 2 Popular
-    switch (_selectedChip) {
-      case 2: // Open now
-        list.retainWhere((d) => _isOpenNowFromSchedule(
-            (d.data()['schedule'] ?? {}) as Map<String, dynamic>));
-        break;
-      case 1: // Newest
-        list.sort((a, b) {
-          final ta = a.data()['postedAt'];
-          final tb = b.data()['postedAt'];
-          return (tb is Timestamp
-                  ? tb.toDate()
-                  : DateTime.fromMillisecondsSinceEpoch(0))
-              .compareTo((ta is Timestamp
-                  ? ta.toDate()
-                  : DateTime.fromMillisecondsSinceEpoch(0)));
-        });
-        break;
-      case 0: // Popular by ratings then reviews count
-        list.sort((a, b) {
-          num ra =
-              (a.data()['ratings'] is num) ? a.data()['ratings'] as num : 0;
-          num rb =
-              (b.data()['ratings'] is num) ? b.data()['ratings'] as num : 0;
-          if (rb != ra) return rb.compareTo(ra);
-          int ca = ((a.data()['reviews'] as List?)?.length ?? 0);
-          int cb = ((b.data()['reviews'] as List?)?.length ?? 0);
-          return cb.compareTo(ca);
-        });
-        break;
-      default:
-        break;
-    }
-
-    return list;
   }
 
   // Live rating/count from reviews subcollection with fallback

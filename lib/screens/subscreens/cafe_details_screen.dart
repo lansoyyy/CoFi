@@ -183,124 +183,149 @@ class CafeDetailsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: ListView(
+        child: Stack(
           children: [
-            // Image section with logo
-            Stack(
-              children: [
-                Container(
-                  height: 400,
-                  color: Colors.grey[800],
-                  child: logoUrl != null
-                      ? CachedNetworkImage(
-                          imageUrl: logoUrl,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: 400,
-                          placeholder: (context, url) => const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          errorWidget: (context, url, error) => const Center(
-                            child: Icon(Icons.image,
-                                color: Colors.white38, size: 60),
-                          ),
-                        )
-                      : const Center(
-                          child: Icon(Icons.image,
-                              color: Colors.white38, size: 60),
-                        ),
-                ),
-                Positioned(
-                  top: 16,
-                  left: 16,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                  ),
-                ),
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: _BookmarkButton(shopId: shopId),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+            // Main scrollable content
+            SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 8),
-                  _buildHeaderRatingWidget(
-                      shopId, ratings, reviews.length, ratingText),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  // Image section with logo
+                  Stack(
                     children: [
-                      TextWidget(
-                        text: name,
-                        fontSize: 28,
-                        color: Colors.white,
-                        isBold: true,
+                      Container(
+                        height: 400,
+                        color: Colors.grey[800],
+                        child: logoUrl != null
+                            ? CachedNetworkImage(
+                                imageUrl: logoUrl,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: 400,
+                                placeholder: (context, url) => const Center(
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                                errorWidget: (context, url, error) =>
+                                    const Center(
+                                  child: Icon(Icons.image,
+                                      color: Colors.white38, size: 60),
+                                ),
+                              )
+                            : const Center(
+                                child: Icon(Icons.image,
+                                    color: Colors.white38, size: 60),
+                              ),
+                      ),
+                      Positioned(
+                        top: 16,
+                        left: 16,
+                        child: IconButton(
+                          icon:
+                              const Icon(Icons.arrow_back, color: Colors.white),
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                      Positioned(
+                        top: 16,
+                        right: 16,
+                        child: _BookmarkButton(shopId: shopId),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      spacing: 8,
-                      children: tags.isNotEmpty
-                          ? tags.map((t) => _buildChip(t)).toList()
-                          : [
-                              _buildChip('Cafe'),
-                            ],
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 8),
+                        _buildHeaderRatingWidget(
+                            shopId, ratings, reviews.length, ratingText),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            TextWidget(
+                              text: name,
+                              fontSize: 28,
+                              color: Colors.white,
+                              isBold: true,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            spacing: 8,
+                            children: tags.isNotEmpty
+                                ? tags.map((t) => _buildChip(t)).toList()
+                                : [
+                                    _buildChip('Cafe'),
+                                  ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(height: 32),
+                  _buildSection('About', about.isNotEmpty ? about : '—'),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  _buildSection('Address', address.isNotEmpty ? address : '—'),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  // Map section
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Container(
+                      height: 250,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: latitude != 0.0 && longitude != 0.0
+                          ? _buildMap(latitude, longitude)
+                          : const Center(
+                              child: Icon(Icons.map,
+                                  color: Colors.white38, size: 60),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  _buildSection(
+                      'Schedule', scheduleText.isNotEmpty ? scheduleText : '—'),
+                  const SizedBox(height: 32),
+                  _buildContactsSection(contactItems),
+                  const SizedBox(height: 32),
+                  _buildSection('Menu', 'Tap to view Menu',
+                      icon: Icons.menu_book),
+                  const SizedBox(height: 32),
+                  (shopId != null && shopId!.isNotEmpty)
+                      ? _buildReviewsSummaryStream(shopId!)
+                      : _buildReviewsSummary(reviews),
+                  (shopId != null && shopId!.isNotEmpty)
+                      ? _buildReviewsSectionStream(shopId!)
+                      : _buildReviewsSection(reviews),
+                  // Add extra padding to ensure content isn't hidden behind fixed buttons
+                  const SizedBox(height: 200),
                 ],
               ),
             ),
-            const SizedBox(height: 32),
-            _buildSection('About', about.isNotEmpty ? about : '—'),
-            SizedBox(
-              height: 10,
-            ),
-            _buildSection('Address', address.isNotEmpty ? address : '—'),
-            SizedBox(
-              height: 10,
-            ),
-            // Map section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+            // Fixed action buttons at the bottom
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
               child: Container(
-                height: 250,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: latitude != 0.0 && longitude != 0.0
-                    ? _buildMap(latitude, longitude)
-                    : const Center(
-                        child: Icon(Icons.map, color: Colors.white38, size: 60),
-                      ),
+                color: Colors.black,
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _buildActionButtons(context),
               ),
             ),
-            const SizedBox(height: 32),
-            _buildSection(
-                'Schedule', scheduleText.isNotEmpty ? scheduleText : '—'),
-            const SizedBox(height: 32),
-            _buildContactsSection(contactItems),
-            const SizedBox(height: 32),
-            _buildSection('Menu', 'Tap to view Menu', icon: Icons.menu_book),
-            const SizedBox(height: 32),
-            (shopId != null && shopId!.isNotEmpty)
-                ? _buildReviewsSummaryStream(shopId!)
-                : _buildReviewsSummary(reviews),
-            (shopId != null && shopId!.isNotEmpty)
-                ? _buildReviewsSectionStream(shopId!)
-                : _buildReviewsSection(reviews),
-            _buildActionButtons(context),
           ],
         ),
       ),

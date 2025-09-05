@@ -156,7 +156,7 @@ class MapViewScreen extends StatelessWidget {
 
           final center = markers.isNotEmpty
               ? markers.first.point
-              : const LatLng(7.1907, 125.4553);
+              : const LatLng(7.0647, 125.6088);
           return FlutterMap(
             options: MapOptions(
               initialCenter: center, // Davao City default when no markers

@@ -3,8 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../widgets/text_widget.dart';
 import '../../utils/colors.dart';
 import 'reviews_screen.dart';
@@ -285,6 +284,7 @@ class CafeDetailsScreen extends StatelessWidget {
                     child: Container(
                       height: 250,
                       decoration: BoxDecoration(
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: latitude != 0.0 && longitude != 0.0
@@ -1062,32 +1062,24 @@ class CafeDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildMap(double latitude, double longitude) {
-    return FlutterMap(
-      options: MapOptions(
-        initialCenter: LatLng(latitude, longitude),
-        initialZoom: 15.0,
-        interactionOptions: InteractionOptions(flags: InteractiveFlag.none),
+    return GoogleMap(
+      initialCameraPosition: CameraPosition(
+        target: LatLng(latitude, longitude),
+        zoom: 15.0,
       ),
-      children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.cofi',
+      markers: {
+        Marker(
+          markerId: MarkerId('shop_location'),
+          position: LatLng(latitude, longitude),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
         ),
-        MarkerLayer(
-          markers: [
-            Marker(
-              width: 80.0,
-              height: 80.0,
-              point: LatLng(latitude, longitude),
-              child: const Icon(
-                Icons.location_on,
-                color: Colors.red,
-                size: 40,
-              ),
-            ),
-          ],
-        ),
-      ],
+      },
+      zoomControlsEnabled: false,
+      scrollGesturesEnabled: false,
+      tiltGesturesEnabled: false,
+      rotateGesturesEnabled: false,
+      myLocationButtonEnabled: false,
+      compassEnabled: false,
     );
   }
 }

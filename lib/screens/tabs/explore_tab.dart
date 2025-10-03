@@ -1,4 +1,5 @@
 import 'package:cofi/screens/subscreens/cafe_details_screen.dart';
+import 'package:cofi/screens/subscreens/event_details_screen.dart';
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -30,6 +31,26 @@ class _ExploreTabState extends State<ExploreTab> {
   Set<String> _bookmarks = {};
   Set<String> _visited = {};
   List<String> _userInterests = []; // New field to store user interests
+
+  // Tag filters
+  Set<String> _selectedTags = {};
+  final List<String> _availableTags = [
+    'Specialty Coffee',
+    'Matcha Drinks',
+    'Pastries',
+    'Work-Friendly (Wi-Fi + outlets)',
+    'Pet-Friendly',
+    'Parking Available',
+    'Family Friendly',
+    'Study Sessions',
+    'Night Café (Open Late)',
+    'Minimalist / Modern',
+    'Rustic / Cozy',
+    'Outdoor / Garden',
+    'Seaside / Scenic',
+    'Artsy / Aesthetic',
+    'Instagrammable',
+  ];
 
   @override
   void initState() {
@@ -276,6 +297,9 @@ class _ExploreTabState extends State<ExploreTab> {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        // Tag filters
+        _buildTagFilters(),
         const SizedBox(height: 18),
         _sectionTitle('Featured Cafe Shops'),
         const SizedBox(height: 10),
@@ -364,7 +388,11 @@ class _ExploreTabState extends State<ExploreTab> {
             child: Text('Sign in to see featured',
                 style: TextStyle(color: Colors.white70)),
           ),
+        const SizedBox(height: 18),
+        _sectionTitle('Upcoming Events'),
         const SizedBox(height: 10),
+        _buildEventsSection(),
+        const SizedBox(height: 18),
         GestureDetector(
             onTap: () => widget.onOpenCommunity?.call(),
             child: _buildCheckCommunityButton()),
@@ -562,6 +590,14 @@ class _ExploreTabState extends State<ExploreTab> {
     if (_isOpenNow) {
       out = out.where((d) => _isOpenNowFromSchedule(
           (d.data()['schedule'] ?? {}) as Map<String, dynamic>));
+    }
+
+    // Tag filters
+    if (_selectedTags.isNotEmpty) {
+      out = out.where((d) {
+        final tags = (d.data()['tags'] as List?)?.cast<String>() ?? [];
+        return _selectedTags.any((selectedTag) => tags.contains(selectedTag));
+      });
     }
 
     final list = out.toList();
@@ -864,15 +900,15 @@ class _ExploreTabState extends State<ExploreTab> {
           IconButton(
             icon: const Icon(Icons.tune, color: Colors.white54),
             onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.black,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                builder: (context) => _buildFilterBottomSheet(context),
-              );
+              // showModalBottomSheet(
+              //   context: context,
+              //   isScrollControlled: true,
+              //   backgroundColor: Colors.black,
+              //   shape: const RoundedRectangleBorder(
+              //     borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              //   ),
+              //   builder: (context) => _buildFilterBottomSheet(context),
+              // );
             },
           ),
           if (_query.isNotEmpty)
@@ -1287,6 +1323,154 @@ class _ExploreTabState extends State<ExploreTab> {
           const FaIcon(FontAwesomeIcons.angleRight,
               color: Colors.white, size: 20),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEventsSection() {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collectionGroup('events')
+          .orderBy('createdAt', descending: true)
+          .limit(5)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            height: 200,
+            child: Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+        if (snapshot.hasError) {
+          return const Padding(
+            padding: EdgeInsets.all(12),
+            child: Text('Failed to load events',
+                style: TextStyle(color: Colors.white70)),
+          );
+        }
+        final docs = snapshot.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.all(12),
+            child: Text('No events available',
+                style: TextStyle(color: Colors.white70)),
+          );
+        }
+        return SizedBox(
+          height: 200,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: docs.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, idx) {
+              final event = docs[idx].data();
+              final eventId = docs[idx].id;
+              return SizedBox(
+                width: 300,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EventDetailsScreen(event: {
+                          ...event,
+                          'id': eventId,
+                        }),
+                      ),
+                    );
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Stack(
+                      children: [
+                        Container(
+                          height: 200,
+                          width: double.infinity,
+                          color: Colors.grey[800],
+                          child: const Center(
+                            child: Icon(Icons.image,
+                                color: Colors.white38, size: 60),
+                          ),
+                        ),
+                        Positioned(
+                          left: 16,
+                          bottom: 24,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              TextWidget(
+                                text: (event['title'] ?? 'Event').toString(),
+                                fontSize: 18,
+                                color: Colors.white,
+                                isBold: true,
+                              ),
+                              const SizedBox(height: 4),
+                              TextWidget(
+                                text: _eventSubtitle(event),
+                                fontSize: 14,
+                                color: Colors.white,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  String _eventSubtitle(Map<String, dynamic> event) {
+    final date = event['date'];
+    final start = event['startDate'];
+    if (date is String && date.isNotEmpty) return date;
+    if (start is String && start.isNotEmpty) return start;
+    return 'Today';
+  }
+
+  Widget _buildTagFilters() {
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _availableTags.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final tag = _availableTags[i];
+          final isSelected = _selectedTags.contains(tag);
+          return FilterChip(
+            label: TextWidget(
+              text: tag,
+              fontSize: 12,
+              color: Colors.white,
+              isBold: false,
+            ),
+            backgroundColor: isSelected ? primary : const Color(0xFF222222),
+            selected: isSelected,
+            selectedColor: primary,
+            checkmarkColor: white,
+            onSelected: (_) {
+              setState(() {
+                if (isSelected) {
+                  _selectedTags.remove(tag);
+                } else {
+                  _selectedTags.add(tag);
+                }
+              });
+            },
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            side: BorderSide.none,
+          );
+        },
       ),
     );
   }

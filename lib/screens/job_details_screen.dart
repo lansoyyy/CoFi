@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../widgets/text_widget.dart';
-import '../../utils/colors.dart';
+import '../widgets/text_widget.dart';
+import '../utils/colors.dart';
 
 class JobDetailsScreen extends StatelessWidget {
   final Map<String, dynamic>? job;

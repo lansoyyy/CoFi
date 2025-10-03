@@ -4,8 +4,10 @@ import 'package:cofi/screens/auth/login_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/auth/splash_screen.dart';
 import 'screens/auth/signup_screen.dart';
+import 'screens/auth/onboarding_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/subscreens/cafe_details_screen.dart';
 import 'screens/subscreens/your_reviews_screen.dart';
@@ -56,23 +58,52 @@ class AuthGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        // While initializing or waiting for auth state, show splash
-        if (snapshot.connectionState == ConnectionState.waiting) {
+    return FutureBuilder<bool>(
+      future: _checkOnboardingStatus(),
+      builder: (context, onboardingSnapshot) {
+        if (onboardingSnapshot.connectionState == ConnectionState.waiting) {
           return const SplashScreen();
         }
 
-        final user = snapshot.data;
-        if (user == null) {
-          // Not signed in -> show landing/login entry
-          return const SplashScreen();
-        }
+        final hasSeenOnboarding = onboardingSnapshot.data ?? false;
 
-        // Signed in -> go home
-        return const HomeScreen();
+        return StreamBuilder<User?>(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (context, snapshot) {
+            // While initializing or waiting for auth state, show splash
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SplashScreen();
+            }
+
+            final user = snapshot.data;
+            if (user == null) {
+              // Not signed in -> check if onboarding has been seen
+              if (!hasSeenOnboarding) {
+                return const OnboardingScreen();
+              }
+              return const LoginScreen();
+            }
+
+            // Signed in -> check if onboarding has been seen
+            if (!hasSeenOnboarding) {
+              return const OnboardingScreen();
+            }
+
+            // Signed in and has seen onboarding -> go home
+            return const HomeScreen();
+          },
+        );
       },
     );
+  }
+
+  Future<bool> _checkOnboardingStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('hasSeenOnboarding') ?? false;
+    } catch (e) {
+      // If there's an error accessing SharedPreferences, default to false
+      return false;
+    }
   }
 }

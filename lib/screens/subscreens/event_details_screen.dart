@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../widgets/text_widget.dart';
 import '../../../utils/colors.dart';
+import 'event_comments_screen.dart';
 
 class EventDetailsScreen extends StatelessWidget {
   final Map<String, dynamic>? event;
@@ -24,10 +25,14 @@ class EventDetailsScreen extends StatelessWidget {
                       Container(
                         height: 400,
                         width: double.infinity,
-                        color: Colors.grey[800],
-                        child: const Center(
-                          child: Icon(Icons.image,
-                              color: Colors.white38, size: 60),
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          image: DecorationImage(
+                              opacity: 0.65,
+                              image: NetworkImage(
+                                e['imageUrl'],
+                              ),
+                              fit: BoxFit.cover),
                         ),
                       ),
                       Positioned(
@@ -95,21 +100,6 @@ class EventDetailsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
 
-                        // Map placeholder
-                        Container(
-                          height: 200,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Colors.grey[800],
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.map,
-                                color: Colors.white38, size: 60),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
                         // About Section
                         TextWidget(
                           text: 'About',
@@ -152,7 +142,17 @@ class EventDetailsScreen extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EventCommentsScreen(
+                          eventId: e['id'] ?? '',
+                          shopId: e['shopId'] ?? '',
+                        ),
+                      ),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),

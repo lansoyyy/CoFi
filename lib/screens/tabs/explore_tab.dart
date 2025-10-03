@@ -1388,10 +1388,14 @@ class _ExploreTabState extends State<ExploreTab> {
                         Container(
                           height: 200,
                           width: double.infinity,
-                          color: Colors.grey[800],
-                          child: const Center(
-                            child: Icon(Icons.image,
-                                color: Colors.white38, size: 60),
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            image: DecorationImage(
+                                opacity: 0.65,
+                                image: NetworkImage(
+                                  event['imageUrl'],
+                                ),
+                                fit: BoxFit.cover),
                           ),
                         ),
                         Positioned(

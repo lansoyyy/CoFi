@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 
@@ -32,17 +35,14 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
   final _linkController = TextEditingController();
   bool _saving = false;
 
+  // Image picker related variables
+  final ImagePicker _picker = ImagePicker();
+  File? _selectedImage;
+  bool _isUploading = false;
+
   @override
   void initState() {
     super.initState();
-    // Set default values
-    _eventNameController.text = 'Barista Wanted';
-    _dateController.text = 'Input Field';
-    _addressController.text = 'Input Field';
-    _startDateController.text = 'Input Field';
-    _aboutController.text = 'Input Field';
-    _emailController.text = 'SampleCafe@gmail.com';
-    _linkController.text = 'www.applyforjob.com/SampleCafejob-name';
   }
 
   Future<void> _saveEvent() async {
@@ -56,13 +56,20 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
 
     if (title.isEmpty || date.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter at least Event Name and Date.')),
+        const SnackBar(
+            content: Text('Please enter at least Event Name and Date.')),
       );
       return;
     }
 
     setState(() => _saving = true);
     try {
+      // Upload image if selected
+      String? imageUrl;
+      if (_selectedImage != null) {
+        imageUrl = await _uploadImageToFirebase();
+      }
+
       final data = {
         'title': title,
         'date': date,
@@ -71,7 +78,7 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
         'about': about,
         'email': email,
         'link': link,
-        'gallery': [],
+        'imageUrl': imageUrl, // Store single image URL
         'status': 'pending',
         'participantsCount': 0,
         'shopId': widget.shopId,
@@ -97,6 +104,55 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
       );
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<String?> _uploadImageToFirebase() async {
+    if (_selectedImage == null) return null;
+
+    try {
+      setState(() {
+        _isUploading = true;
+      });
+
+      final fileName =
+          'event_${widget.shopId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final storageRef =
+          FirebaseStorage.instance.ref().child('event_images').child(fileName);
+
+      final uploadTask = storageRef.putFile(_selectedImage!);
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      return downloadUrl;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload image: $e')),
+      );
+      return null;
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to pick image: $e')),
+      );
     }
   }
 
@@ -195,41 +251,96 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
 
                       // Gallery Section
                       TextWidget(
-                        text: 'Gallery',
+                        text: 'Event Image',
                         fontSize: 16,
                         color: Colors.white,
                         isBold: true,
                       ),
                       const SizedBox(height: 16),
 
-                      // Gallery Grid
-                      Row(
-                        children: [
-                          // First row of gallery items
-                          Expanded(
-                            child: Row(
-                              children: [
-                                _buildGalleryItem(hasImage: true),
-                                const SizedBox(width: 8),
-                                _buildGalleryItem(hasImage: true),
-                                const SizedBox(width: 8),
-                                _buildGalleryItem(hasImage: true),
-                              ],
-                            ),
+                      // Image Picker
+                      GestureDetector(
+                        onTap: _isUploading ? null : _pickImage,
+                        child: Container(
+                          width: double.infinity,
+                          height: 200,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[800],
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          // Second row of gallery items
-                          _buildGalleryItem(hasImage: true),
-                          const SizedBox(width: 8),
-                          _buildGalleryItem(hasImage: true),
-                          const SizedBox(width: 8),
-                          _buildGalleryItem(hasImage: false, isAddButton: true),
-                          const Spacer(),
-                        ],
+                          child: _isUploading
+                              ? const Center(
+                                  child: SizedBox(
+                                    width: 28,
+                                    height: 28,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                    ),
+                                  ),
+                                )
+                              : _selectedImage != null
+                                  ? Stack(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          child: Image.file(
+                                            _selectedImage!,
+                                            width: double.infinity,
+                                            height: 200,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                        Positioned(
+                                          top: 8,
+                                          right: 8,
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              setState(() {
+                                                _selectedImage = null;
+                                              });
+                                            },
+                                            child: Container(
+                                              width: 32,
+                                              height: 32,
+                                              decoration: const BoxDecoration(
+                                                color: Colors.black54,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.close,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : const Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.add_photo_alternate,
+                                            color: Colors.white54,
+                                            size: 48,
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'Tap to add image',
+                                            style: TextStyle(
+                                              color: Colors.white54,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                        ),
                       ),
 
                       const SizedBox(height: 40),
@@ -253,7 +364,8 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
                                   height: 22,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                                    valueColor:
+                                        AlwaysStoppedAnimation(Colors.white),
                                   ),
                                 )
                               : TextWidget(
@@ -312,37 +424,4 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
       ],
     );
   }
-
-  Widget _buildGalleryItem({required bool hasImage, bool isAddButton = false}) {
-    return Container(
-      width: 80,
-      height: 80,
-      decoration: BoxDecoration(
-        color: primary,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: isAddButton
-          ? const Icon(
-              Icons.add,
-              color: Colors.white,
-              size: 32,
-            )
-          : Center(
-              child: Container(
-                width: 24,
-                height: 24,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.local_cafe,
-                  color: Colors.red,
-                  size: 16,
-                ),
-              ),
-            ),
-    );
-  }
-
 }

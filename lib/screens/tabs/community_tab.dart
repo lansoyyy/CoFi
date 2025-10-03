@@ -65,7 +65,7 @@ class CommunityTab extends StatelessWidget {
                 stream: FirebaseFirestore.instance
                     .collectionGroup('events')
                     .orderBy('createdAt', descending: true)
-                    .limit(25)
+                    .limit(10)
                     .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -83,7 +83,7 @@ class CommunityTab extends StatelessWidget {
                   DocumentSnapshot<Map<String, dynamic>>? todayDoc;
                   for (final d in docs) {
                     final data = d.data();
-                    if (_isEventToday(data)) {
+                    if (true) {
                       todayDoc = d;
                       break;
                     }
@@ -115,10 +115,14 @@ class CommunityTab extends StatelessWidget {
                           Container(
                             height: 200,
                             width: double.infinity,
-                            color: Colors.grey[800],
-                            child: const Center(
-                              child: Icon(Icons.image,
-                                  color: Colors.white38, size: 60),
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              image: DecorationImage(
+                                  opacity: 0.65,
+                                  image: NetworkImage(
+                                    event['imageUrl'],
+                                  ),
+                                  fit: BoxFit.cover),
                             ),
                           ),
                           Positioned(

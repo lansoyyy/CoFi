@@ -37,14 +37,6 @@ class _PostJobBottomSheetState extends State<PostJobBottomSheet> {
   void initState() {
     super.initState();
     // Set default values
-    _jobNameController.text = 'Barista Wanted';
-    _typeController.text = 'Input Field';
-    _payController.text = 'Input Field';
-    _requiredController.text = 'Input Field';
-    _startDateController.text = 'Input Field';
-    _descriptionController.text = 'Add list description';
-    _emailController.text = 'SampleCafe@gmail.com';
-    _linkController.text = 'www.applyforjob.com/SampleCafejob-name';
   }
 
   Future<void> _saveJob() async {
@@ -220,7 +212,8 @@ class _PostJobBottomSheetState extends State<PostJobBottomSheet> {
                                   height: 22,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                                    valueColor:
+                                        AlwaysStoppedAnimation(Colors.white),
                                   ),
                                 )
                               : TextWidget(
@@ -281,5 +274,4 @@ class _PostJobBottomSheetState extends State<PostJobBottomSheet> {
       ],
     );
   }
-
 }

@@ -281,7 +281,20 @@ class ProfileTab extends StatelessWidget {
                     builder: (context, snapshot) {
                       final hasShop =
                           snapshot.hasData && snapshot.data!.docs.isNotEmpty;
-                      final label = hasShop ? 'View Shop' : 'Submit A Shop';
+                      String label = hasShop ? 'View Shop' : 'Submit A Shop';
+                      String subtitle = '';
+
+                      if (hasShop) {
+                        final doc = snapshot.data!.docs.first;
+                        final data = doc.data() as Map<String, dynamic>;
+                        final isVerified = data['isVerified'] ?? false;
+
+                        if (!isVerified) {
+                          label = 'Shop Under Verification';
+                          subtitle = 'Your shop is being reviewed';
+                        }
+                      }
+
                       void navigate() {
                         if (hasShop) {
                           final doc = snapshot.data!.docs.first;
@@ -326,11 +339,22 @@ class ProfileTab extends StatelessWidget {
                               ),
                               const SizedBox(width: 16),
                               Expanded(
-                                child: TextWidget(
-                                  text: label,
-                                  fontSize: 18,
-                                  color: Colors.white,
-                                  isBold: true,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    TextWidget(
+                                      text: label,
+                                      fontSize: 18,
+                                      color: Colors.white,
+                                      isBold: true,
+                                    ),
+                                    if (subtitle.isNotEmpty)
+                                      TextWidget(
+                                        text: subtitle,
+                                        fontSize: 14,
+                                        color: Colors.white70,
+                                      ),
+                                  ],
                                 ),
                               ),
                               IconButton(

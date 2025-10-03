@@ -16,7 +16,10 @@ class MapViewScreen extends StatelessWidget {
 
     Widget buildShopsMap(Set<String> bookmarks, User? user) {
       return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance.collection('shops').snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('shops')
+            .where('isVerified', isEqualTo: true)
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(

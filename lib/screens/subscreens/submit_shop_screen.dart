@@ -4,9 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:io';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
+import 'custom_location_screen.dart';
 
 class SubmitShopScreen extends StatefulWidget {
   const SubmitShopScreen({super.key});
@@ -58,6 +60,10 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
   bool _isLoadingExisting = false;
   bool _didLoadArgs = false;
   bool _locationReady = false;
+
+  // Location selection
+  String _locationType = 'my_location'; // 'my_location' or 'custom_location'
+  LatLng? _selectedLocation;
 
   // Schedule state: each day has isOpen + open/close times (TimeOfDay?)
   final List<MapEntry<String, String>> _days = const [
@@ -147,6 +153,16 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
           'open': _parseTimeOfDay(m['open'] as String?),
           'close': _parseTimeOfDay(m['close'] as String?),
         };
+      }
+
+      // Load existing location
+      final double? latitude = data['latitude'] as double?;
+      final double? longitude = data['longitude'] as double?;
+      if (latitude != null && longitude != null) {
+        setState(() {
+          _selectedLocation = LatLng(latitude, longitude);
+          _locationType = 'custom_location';
+        });
       }
     } catch (_) {
       // ignore, basic UX handled by unchanged fields
@@ -300,10 +316,18 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
               'email': user.email,
             };
 
-      // Try to get current location (optional; will be included if available)
-      final position = await _getCurrentPosition();
-      final double? latitude = position?.latitude;
-      final double? longitude = position?.longitude;
+      // Get location based on selection
+      double? latitude;
+      double? longitude;
+
+      if (_locationType == 'my_location') {
+        final position = await _getCurrentPosition();
+        latitude = position?.latitude;
+        longitude = position?.longitude;
+      } else if (_selectedLocation != null) {
+        latitude = _selectedLocation!.latitude;
+        longitude = _selectedLocation!.longitude;
+      }
 
       if (_isEditing && _editShopId != null && _editShopId!.isNotEmpty) {
         // Update existing shop
@@ -390,6 +414,7 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
           'ratingCount': 0,
           'visits': [],
           'menu': [],
+          'isVerified': false, // New field for shop verification
         };
 
         final ref =
@@ -413,7 +438,9 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Shop submitted successfully.')),
+            const SnackBar(
+                content: Text(
+                    'Shop submitted successfully. Your shop is currently under verification.')),
           );
           Navigator.pushReplacementNamed(
             context,
@@ -769,8 +796,132 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
 
                     const SizedBox(height: 40),
 
-                    // Location requirement notice
-                    if (!_locationReady)
+                    // Location Selection Section
+                    TextWidget(
+                      text: 'Shop Location',
+                      fontSize: 16,
+                      color: Colors.white,
+                      isBold: true,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Location Type Selection
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[900],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          RadioListTile<String>(
+                            title: TextWidget(
+                              text: 'My Current Location',
+                              fontSize: 14,
+                              color: Colors.white,
+                            ),
+                            subtitle: TextWidget(
+                              text: 'Use my current location for the shop',
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                            value: 'my_location',
+                            groupValue: _locationType,
+                            onChanged: (value) {
+                              setState(() {
+                                _locationType = value!;
+                              });
+                            },
+                            activeColor: primary,
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 16),
+                          ),
+                          RadioListTile<String>(
+                            title: TextWidget(
+                              text: 'Custom Location',
+                              fontSize: 14,
+                              color: Colors.white,
+                            ),
+                            subtitle: TextWidget(
+                              text: 'Select a custom location on the map',
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                            value: 'custom_location',
+                            groupValue: _locationType,
+                            onChanged: (value) {
+                              setState(() {
+                                _locationType = value!;
+                              });
+                            },
+                            activeColor: primary,
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 16),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Show selected custom location info
+                    if (_locationType == 'custom_location' &&
+                        _selectedLocation != null)
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[900],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.location_on,
+                                color: primary, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextWidget(
+                                text:
+                                    'Selected: ${_selectedLocation!.latitude.toStringAsFixed(6)}, ${_selectedLocation!.longitude.toStringAsFixed(6)}',
+                                fontSize: 12,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _selectCustomLocation,
+                              child: const Text('Change',
+                                  style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Custom location selection button
+                    if (_locationType == 'custom_location')
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: _selectCustomLocation,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                          ),
+                          child: TextWidget(
+                            text: _selectedLocation == null
+                                ? 'Select Location on Map'
+                                : 'Change Location',
+                            fontSize: 16,
+                            color: Colors.white,
+                            isBold: true,
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 32),
+
+                    // Location requirement notice for my location
+                    if (_locationType == 'my_location' && !_locationReady)
                       Container(
                         width: double.infinity,
                         margin: const EdgeInsets.only(bottom: 12),
@@ -824,8 +975,13 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed:
-                            (_isSaving || !_locationReady) ? null : _submitShop,
+                        onPressed: (_isSaving ||
+                                (_locationType == 'my_location' &&
+                                    !_locationReady) ||
+                                (_locationType == 'custom_location' &&
+                                    _selectedLocation == null))
+                            ? null
+                            : _submitShop,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primary,
                           shape: RoundedRectangleBorder(
@@ -843,9 +999,13 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
                                 ),
                               )
                             : TextWidget(
-                                text: _locationReady
-                                    ? (_isEditing ? 'Update' : 'Save')
-                                    : 'Enable Location',
+                                text: (_locationType == 'my_location' &&
+                                        !_locationReady)
+                                    ? 'Enable Location'
+                                    : (_locationType == 'custom_location' &&
+                                            _selectedLocation == null)
+                                        ? 'Select Location'
+                                        : (_isEditing ? 'Update' : 'Save'),
                                 fontSize: 16,
                                 color: Colors.white,
                                 isBold: true,
@@ -1186,6 +1346,23 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _selectCustomLocation() async {
+    final LatLng? selectedLocation = await Navigator.push<LatLng>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CustomLocationScreen(
+          initialLocation: _selectedLocation,
+        ),
+      ),
+    );
+
+    if (selectedLocation != null) {
+      setState(() {
+        _selectedLocation = selectedLocation;
+      });
+    }
   }
 
   @override

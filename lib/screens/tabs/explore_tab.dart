@@ -45,7 +45,7 @@ class _ExploreTabState extends State<ExploreTab> {
       final q = _searchCtrl.text.trim();
       if (q != _query) setState(() => _query = q);
     });
-    
+
     // Fetch user interests
     _fetchUserInterests();
   }
@@ -53,13 +53,13 @@ class _ExploreTabState extends State<ExploreTab> {
   // New method to fetch user interests
   Future<void> _fetchUserInterests() async {
     if (_user == null) return;
-    
+
     try {
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(_user!.uid)
           .get();
-      
+
       if (userDoc.exists) {
         final data = userDoc.data();
         final interests = (data?['interests'] as List?)?.cast<String>() ?? [];
@@ -469,9 +469,10 @@ class _ExploreTabState extends State<ExploreTab> {
   Stream<QuerySnapshot<Map<String, dynamic>>> _getFeaturedShopsStream() {
     // If we have user interests, show recommended shops
     if (_userInterests.isNotEmpty && _selectedChip == -1) {
-      // Query shops that match user interests
+      // Query shops that match user interests and are verified
       return FirebaseFirestore.instance
           .collection('shops')
+          .where('isVerified', isEqualTo: true)
           .where('tags', arrayContainsAny: _userInterests)
           .orderBy('ratings', descending: true)
           .limit(10)
@@ -482,12 +483,14 @@ class _ExploreTabState extends State<ExploreTab> {
         case 2: // Open now
           return FirebaseFirestore.instance
               .collection('shops')
+              .where('isVerified', isEqualTo: true)
               .orderBy('ratings', descending: true)
               .limit(10)
               .snapshots();
         case 1: // Newest
           return FirebaseFirestore.instance
               .collection('shops')
+              .where('isVerified', isEqualTo: true)
               .orderBy('postedAt', descending: true)
               .limit(10)
               .snapshots();
@@ -495,6 +498,7 @@ class _ExploreTabState extends State<ExploreTab> {
         default:
           return FirebaseFirestore.instance
               .collection('shops')
+              .where('isVerified', isEqualTo: true)
               .orderBy('ratings', descending: true)
               .limit(10)
               .snapshots();
@@ -506,9 +510,10 @@ class _ExploreTabState extends State<ExploreTab> {
   Stream<QuerySnapshot<Map<String, dynamic>>> _getShopsStream() {
     // If we have user interests and no filter is selected, show recommended shops
     if (_userInterests.isNotEmpty && _selectedChip == -1) {
-      // Query shops that match user interests
+      // Query shops that match user interests and are verified
       return FirebaseFirestore.instance
           .collection('shops')
+          .where('isVerified', isEqualTo: true)
           .where('tags', arrayContainsAny: _userInterests)
           .orderBy('postedAt', descending: true)
           .snapshots();
@@ -518,17 +523,20 @@ class _ExploreTabState extends State<ExploreTab> {
         case 1: // Newest
           return FirebaseFirestore.instance
               .collection('shops')
+              .where('isVerified', isEqualTo: true)
               .orderBy('postedAt', descending: true)
               .snapshots();
         case 2: // Open now
           return FirebaseFirestore.instance
               .collection('shops')
+              .where('isVerified', isEqualTo: true)
               .orderBy('postedAt', descending: true)
               .snapshots();
         case 0: // Popular (default)
         default:
           return FirebaseFirestore.instance
               .collection('shops')
+              .where('isVerified', isEqualTo: true)
               .orderBy('ratings', descending: true)
               .snapshots();
       }
@@ -607,10 +615,8 @@ class _ExploreTabState extends State<ExploreTab> {
       // When no filter is selected but we have user interests, we're showing recommendations
       // Sort by ratings as default for recommendations
       list.sort((a, b) {
-        num ra =
-            (a.data()['ratings'] is num) ? a.data()['ratings'] as num : 0;
-        num rb =
-            (b.data()['ratings'] is num) ? b.data()['ratings'] as num : 0;
+        num ra = (a.data()['ratings'] is num) ? a.data()['ratings'] as num : 0;
+        num rb = (b.data()['ratings'] is num) ? b.data()['ratings'] as num : 0;
         if (rb != ra) return rb.compareTo(ra);
         int ca = ((a.data()['reviews'] as List?)?.length ?? 0);
         int cb = ((b.data()['reviews'] as List?)?.length ?? 0);

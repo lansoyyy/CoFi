@@ -250,6 +250,7 @@ class _CollectionsTabState extends State<CollectionsTab> {
                             if (tags.isNotEmpty) {
                               final shopsQuery = FirebaseFirestore.instance
                                   .collection('shops')
+                                  .where('isVerified', isEqualTo: true)
                                   .where('tags', arrayContainsAny: tags);
                               final shopsStream = shopsQuery.snapshots();
                               return StreamBuilder<
@@ -356,6 +357,8 @@ class _CollectionsTabState extends State<CollectionsTab> {
                                         final snap = await FirebaseFirestore
                                             .instance
                                             .collection('shops')
+                                            .where('isVerified',
+                                                isEqualTo: true)
                                             .where(FieldPath.documentId,
                                                 whereIn: batch)
                                             .get();

@@ -16,16 +16,21 @@ class _CreateListBottomSheetState extends State<CreateListBottomSheet> {
   final TextEditingController _descriptionController = TextEditingController();
   // Reuse the same tag names as shops use in submit_shop_screen.dart
   final Map<String, bool> _selectedTags = {
-    'Aesthetic': false,
+    'Specialty Coffee': false,
     'Matcha Drinks': false,
-    'Cozy & Chill': false,
-    'Community Hub': false,
-    'Newly Opened': false,
-    'Free Wifi': false,
-    'Pet Friendly': false,
-    'Power Outlets': false,
-    'Parking Spaces': false,
-    'Study-Friendly': false,
+    'Pastries': false,
+    'Work-Friendly (Wi-Fi + outlets)': false,
+    'Pet-Friendly': false,
+    'Parking Available': false,
+    'Family Friendly': false,
+    'Study Sessions': false,
+    'Night Café (Open Late)': false,
+    'Minimalist / Modern': false,
+    'Rustic / Cozy': false,
+    'Outdoor / Garden': false,
+    'Seaside / Scenic': false,
+    'Artsy / Aesthetic': false,
+    'Instagrammable': false,
   };
 
   @override

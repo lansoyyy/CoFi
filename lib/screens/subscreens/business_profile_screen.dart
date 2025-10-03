@@ -66,6 +66,7 @@ class BusinessProfileScreen extends StatelessWidget {
                           shopName,
                           shopId,
                           null, // logoUrl
+                          null, // isVerified
                         );
                       }
 
@@ -75,17 +76,20 @@ class BusinessProfileScreen extends StatelessWidget {
                           shopName,
                           shopId,
                           null, // logoUrl
+                          null, // isVerified
                         );
                       }
 
                       final data = snapshot.data?.data();
                       final logoUrl = data?['logoUrl'] as String?;
+                      final isVerified = data?['isVerified'] as bool? ?? false;
 
                       return _buildBusinessProfileCard(
                         context,
                         shopName,
                         shopId,
                         logoUrl,
+                        isVerified,
                       );
                     },
                   )
@@ -95,6 +99,7 @@ class BusinessProfileScreen extends StatelessWidget {
                     shopName,
                     shopId,
                     null, // logoUrl
+                    null, // isVerified
                   ),
 
                 const SizedBox(height: 40),
@@ -268,6 +273,7 @@ class BusinessProfileScreen extends StatelessWidget {
     String shopName,
     String? shopId,
     String? logoUrl,
+    bool? isVerified,
   ) {
     return GestureDetector(
       onTap: () {
@@ -352,17 +358,32 @@ class BusinessProfileScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextWidget(
-                  text: shopName,
-                  fontSize: 18,
-                  color: Colors.white,
-                  isBold: true,
+                Row(
+                  children: [
+                    TextWidget(
+                      text: shopName,
+                      fontSize: 18,
+                      color: Colors.white,
+                      isBold: true,
+                    ),
+                    if (isVerified != null) ...[
+                      const SizedBox(width: 8),
+                      Icon(
+                        isVerified ? Icons.verified : Icons.pending,
+                        color: isVerified ? Colors.green : Colors.orange,
+                        size: 18,
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 4),
                 TextWidget(
-                  text: 'Tap to Manage profile',
+                  text: isVerified == false
+                      ? 'Shop is under verification'
+                      : 'Tap to Manage profile',
                   fontSize: 14,
-                  color: Colors.grey[400]!,
+                  color:
+                      isVerified == false ? Colors.orange : Colors.grey[400]!,
                 ),
               ],
             ),

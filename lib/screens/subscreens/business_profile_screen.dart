@@ -448,7 +448,7 @@ class BusinessProfileScreen extends StatelessWidget {
             isBold: true,
           ),
           const SizedBox(height: 20),
-          
+
           // Stats Grid
           StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             stream: FirebaseFirestore.instance
@@ -468,7 +468,8 @@ class BusinessProfileScreen extends StatelessWidget {
                         child: _buildStatItem(
                           icon: Icons.star,
                           label: 'Rating',
-                          value: ratings > 0 ? ratings.toStringAsFixed(1) : '0.0',
+                          value:
+                              ratings > 0 ? ratings.toStringAsFixed(1) : '0.0',
                           color: Colors.amber,
                         ),
                       ),
@@ -494,7 +495,8 @@ class BusinessProfileScreen extends StatelessWidget {
                               .collection('visits')
                               .snapshots(),
                           builder: (context, visitSnapshot) {
-                            final visitCount = visitSnapshot.data?.docs.length ?? 0;
+                            final visitCount =
+                                visitSnapshot.data?.docs.length ?? 0;
                             return _buildStatItem(
                               icon: Icons.people,
                               label: 'Customer Visits',
@@ -519,7 +521,8 @@ class BusinessProfileScreen extends StatelessWidget {
                                   .where('bookmarks', arrayContains: shopId)
                                   .get(),
                               builder: (context, bookmarkSnapshot) {
-                                final savedCount = bookmarkSnapshot.data?.docs.length ?? 0;
+                                final savedCount =
+                                    bookmarkSnapshot.data?.docs.length ?? 0;
                                 return _buildStatItem(
                                   icon: Icons.bookmark,
                                   label: 'Saved',
@@ -576,4 +579,3 @@ class BusinessProfileScreen extends StatelessWidget {
     );
   }
 }
-

@@ -3,10 +3,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/text_widget.dart';
 import '../utils/colors.dart';
+import 'job_application_screen.dart';
 
 class JobDetailsScreen extends StatelessWidget {
   final Map<String, dynamic>? job;
-  const JobDetailsScreen({Key? key, this.job}) : super(key: key);
+  final String shopId;
+  const JobDetailsScreen({Key? key, this.job, required this.shopId})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -195,54 +198,10 @@ class JobDetailsScreen extends StatelessWidget {
   }
 
   Future<void> _applyNow(BuildContext context) async {
-    final data = job ?? <String, dynamic>{};
-    // 1) Try opening a direct link if provided
-    final rawLink = (data['link'] ?? data['url'] ?? '').toString().trim();
-    if (rawLink.isNotEmpty) {
-      Uri? uri = Uri.tryParse(rawLink);
-      if (uri != null && (uri.scheme.isEmpty)) {
-        uri = Uri.tryParse('https://$rawLink');
-      }
-      if (uri != null) {
-        try {
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-            return;
-          }
-        } catch (_) {
-          // fall through to email
-        }
-      }
-    }
-
-    // 2) Fallback to composing an email
-    final email = (data['email'] ?? '').toString().trim();
-    if (email.isNotEmpty) {
-      final subject = 'Application: '
-          '${(data['title'] ?? 'Job').toString()}';
-      final body = 'Hi, I\'m interested in this role.';
-      final mailUri = Uri(
-        scheme: 'mailto',
-        path: email,
-        queryParameters: {
-          'subject': subject,
-          'body': body,
-        },
-      );
-      try {
-        if (await canLaunchUrl(mailUri)) {
-          await launchUrl(mailUri);
-          return;
-        }
-      } catch (_) {
-        // continue to snackbar
-      }
-    }
-
-    // 3) Nothing available
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('No application link or email provided'),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => JobApplicationScreen(job: job, shopId: shopId),
       ),
     );
   }

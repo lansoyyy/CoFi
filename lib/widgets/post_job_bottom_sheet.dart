@@ -81,6 +81,7 @@ class _PostJobBottomSheetState extends State<PostJobBottomSheet> {
         'shopId': widget.shopId,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
+        'applications': []
       };
 
       await FirebaseFirestore.instance

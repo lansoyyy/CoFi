@@ -253,10 +253,13 @@ class CommunityTab extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => JobDetailsScreen(job: {
-                                ...job,
-                                'id': d.id,
-                              }),
+                              builder: (context) => JobDetailsScreen(
+                                job: {
+                                  ...job,
+                                  'id': d.id,
+                                },
+                                shopId: d['shopId'],
+                              ),
                             ),
                           );
                         },

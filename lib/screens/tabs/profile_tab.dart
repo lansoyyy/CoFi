@@ -257,7 +257,7 @@ class ProfileTab extends StatelessWidget {
               builder: (context) {
                 final user = FirebaseAuth.instance.currentUser;
                 if (user == null) return const SizedBox.shrink();
-                
+
                 return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                   stream: FirebaseFirestore.instance
                       .collection('users')
@@ -265,13 +265,14 @@ class ProfileTab extends StatelessWidget {
                       .snapshots(),
                   builder: (context, userSnapshot) {
                     final userData = userSnapshot.data?.data();
-                    final accountType = userData?['accountType'] as String? ?? 'user';
-                    
+                    final accountType =
+                        userData?['accountType'] as String? ?? 'user';
+
                     // Business Account - Show Business Dashboard
                     if (accountType == 'business') {
                       return _buildBusinessSection(context, user.uid);
                     }
-                    
+
                     // User Account - Show Contribute Section
                     return _buildUserContributeSection(context, user.uid);
                   },
@@ -488,7 +489,8 @@ class ProfileTab extends StatelessWidget {
                 .limit(1)
                 .snapshots(),
             builder: (context, snapshot) {
-              final hasShop = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+              final hasShop =
+                  snapshot.hasData && snapshot.data!.docs.isNotEmpty;
               String label = hasShop ? 'View Submission' : 'Submit A Shop';
               String subtitle = '';
               IconData statusIcon = Icons.local_cafe;
@@ -517,7 +519,7 @@ class ProfileTab extends StatelessWidget {
                   final doc = snapshot.data!.docs.first;
                   final data = doc.data() as Map<String, dynamic>;
                   final isVerified = data['isVerified'] ?? false;
-                  
+
                   // User can only view submission status, not manage
                   showDialog(
                     context: context,
@@ -553,7 +555,8 @@ class ProfileTab extends StatelessWidget {
                             isVerified
                                 ? 'Your shop is now visible to all users!'
                                 : 'Your shop will be visible once approved by our team.',
-                            style: const TextStyle(color: Colors.white60, fontSize: 14),
+                            style: const TextStyle(
+                                color: Colors.white60, fontSize: 14),
                           ),
                         ],
                       ),
@@ -590,7 +593,8 @@ class ProfileTab extends StatelessWidget {
                             shape: BoxShape.circle,
                           ),
                           child: Center(
-                            child: Icon(statusIcon, color: Colors.white, size: 28),
+                            child:
+                                Icon(statusIcon, color: Colors.white, size: 28),
                           ),
                         ),
                       ),
@@ -654,9 +658,13 @@ class ProfileTab extends StatelessWidget {
                 .limit(1)
                 .snapshots(),
             builder: (context, snapshot) {
-              final hasShop = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
-              String label = hasShop ? 'Manage My Shop' : 'Claim or Submit Shop';
-              String subtitle = hasShop ? 'View dashboard & analytics' : 'Get started with your business';
+              final hasShop =
+                  snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+              String label =
+                  hasShop ? 'Manage My Shop' : 'Claim or Submit Shop';
+              String subtitle = hasShop
+                  ? 'View dashboard & analytics'
+                  : 'Get started with your business';
 
               if (hasShop) {
                 final doc = snapshot.data!.docs.first;
@@ -711,7 +719,8 @@ class ProfileTab extends StatelessWidget {
                             shape: BoxShape.circle,
                           ),
                           child: const Center(
-                            child: Icon(Icons.business, color: Colors.white, size: 28),
+                            child: Icon(Icons.business,
+                                color: Colors.white, size: 28),
                           ),
                         ),
                       ),

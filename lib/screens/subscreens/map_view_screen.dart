@@ -3,12 +3,77 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 import '../../widgets/coffee_shop_details_bottom_sheet.dart';
 
-class MapViewScreen extends StatelessWidget {
+class MapViewScreen extends StatefulWidget {
   const MapViewScreen({super.key});
+
+  @override
+  State<MapViewScreen> createState() => _MapViewScreenState();
+}
+
+class _MapViewScreenState extends State<MapViewScreen> {
+  late MapController _mapController;
+  LatLng? _userLocation;
+  bool _showRecenterButton = false;
+  bool _isLoadingLocation = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+    _getUserLocation();
+  }
+
+  Future<void> _getUserLocation() async {
+    try {
+      // Check if location permissions are granted
+      var status = await Permission.location.status;
+      if (!status.isGranted) {
+        status = await Permission.location.request();
+        if (!status.isGranted) {
+          setState(() {
+            _isLoadingLocation = false;
+          });
+          return;
+        }
+      }
+
+      // Get current position
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      setState(() {
+        _userLocation = LatLng(position.latitude, position.longitude);
+        _isLoadingLocation = false;
+      });
+
+      // Center map on user's location
+      if (_userLocation != null) {
+        _mapController.move(_userLocation!, 14);
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingLocation = false;
+      });
+    }
+  }
+
+  void _recenterToUserLocation() {
+    if (_userLocation != null) {
+      _mapController.move(_userLocation!, 14);
+      setState(() {
+        _showRecenterButton = false;
+      });
+    } else {
+      _getUserLocation();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -157,22 +222,140 @@ class MapViewScreen extends StatelessWidget {
             );
           }
 
-          final center = markers.isNotEmpty
-              ? markers.first.point
-              : const LatLng(7.0647, 125.6088);
-          return FlutterMap(
-            options: MapOptions(
-              initialCenter: center, // Davao City default when no markers
-              initialZoom: markers.isNotEmpty ? 14 : 12,
-            ),
+          // Use user's location as center if available, otherwise use first marker or default
+          final center = _userLocation ??
+              (markers.isNotEmpty
+                  ? markers.first.point
+                  : const LatLng(7.0647, 125.6088));
+
+          return Stack(
             children: [
-              TileLayer(
-                urlTemplate:
-                    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                subdomains: const ['a', 'b', 'c'],
-                userAgentPackageName: 'cofi',
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: center,
+                  initialZoom: _userLocation != null
+                      ? 14
+                      : (markers.isNotEmpty ? 14 : 12),
+                  onPositionChanged: (position, hasGesture) {
+                    if (hasGesture && _userLocation != null) {
+                      // Check if user has moved away from their location
+                      final distance = Geolocator.distanceBetween(
+                        _userLocation!.latitude,
+                        _userLocation!.longitude,
+                        position.center?.latitude ?? center.latitude,
+                        position.center?.longitude ?? center.longitude,
+                      );
+
+                      // Show recenter button if user moved more than 500 meters away
+                      if (distance > 500) {
+                        if (!_showRecenterButton) {
+                          setState(() {
+                            _showRecenterButton = true;
+                          });
+                        }
+                      } else {
+                        if (_showRecenterButton) {
+                          setState(() {
+                            _showRecenterButton = false;
+                          });
+                        }
+                      }
+                    }
+                  },
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    subdomains: const ['a', 'b', 'c'],
+                    userAgentPackageName: 'cofi',
+                  ),
+                  MarkerLayer(markers: markers),
+                  // Add user location marker if available
+                  if (_userLocation != null)
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          width: 40,
+                          height: 40,
+                          point: _userLocation!,
+                          alignment: Alignment.center,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.8),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.my_location,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
               ),
-              MarkerLayer(markers: markers),
+              // Recenter button
+              if (_showRecenterButton)
+                Positioned(
+                  bottom: 30,
+                  right: 20,
+                  child: FloatingActionButton(
+                    onPressed: _recenterToUserLocation,
+                    backgroundColor: primary,
+                    mini: true,
+                    child: const Icon(
+                      Icons.my_location,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              // Loading indicator
+              if (_isLoadingLocation)
+                Positioned(
+                  top: 20,
+                  left: 20,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Getting your location...',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           );
         },
@@ -180,7 +363,6 @@ class MapViewScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,

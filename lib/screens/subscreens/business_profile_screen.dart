@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 import '../../widgets/post_event_bottom_sheet.dart';
@@ -260,7 +261,57 @@ class BusinessProfileScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        Expanded(child: Container()), // Empty space
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              if (shopId != null && shopId.isNotEmpty) {
+                                _showJobApplicationsBottomSheet(
+                                    context, shopId);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Please create or select a shop first.'),
+                                  ),
+                                );
+                              }
+                            },
+                            child: (shopId != null && shopId.isNotEmpty)
+                                ? StreamBuilder<QuerySnapshot>(
+                                    stream: FirebaseFirestore.instance
+                                        .collection('shops')
+                                        .doc(shopId)
+                                        .collection('jobs')
+                                        .snapshots(),
+                                    builder: (context, snapshot) {
+                                      int totalApplications = 0;
+
+                                      if (snapshot.hasData) {
+                                        for (var doc in snapshot.data!.docs) {
+                                          final applications =
+                                              doc['applications'] as List? ??
+                                                  [];
+                                          totalApplications +=
+                                              applications.length;
+                                        }
+                                      }
+
+                                      final subtitle = totalApplications == 0
+                                          ? 'No applications yet'
+                                          : '$totalApplications Applications';
+
+                                      return _buildSectionCard(
+                                        title: 'Applications',
+                                        subtitle: subtitle,
+                                      );
+                                    },
+                                  )
+                                : _buildSectionCard(
+                                    title: 'Applications',
+                                    subtitle: 'View job applications',
+                                  ),
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -577,5 +628,339 @@ class BusinessProfileScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _showJobApplicationsBottomSheet(BuildContext context, String shopId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => JobApplicationsBottomSheet(shopId: shopId),
+    );
+  }
+}
+
+class JobApplicationsBottomSheet extends StatefulWidget {
+  final String shopId;
+
+  const JobApplicationsBottomSheet({Key? key, required this.shopId})
+      : super(key: key);
+
+  @override
+  State<JobApplicationsBottomSheet> createState() =>
+      _JobApplicationsBottomSheetState();
+}
+
+class _JobApplicationsBottomSheetState
+    extends State<JobApplicationsBottomSheet> {
+  @override
+  Widget build(BuildContext context) {
+    print(widget.shopId);
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: const BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 50,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.grey[600],
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+
+          // Header
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextWidget(
+                  text: 'Job Applications',
+                  fontSize: 24,
+                  color: Colors.white,
+                  isBold: true,
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+
+          // Applications list
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('shops')
+                  .doc(widget.shopId)
+                  .collection('jobs')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: primary),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: TextWidget(
+                      text: 'Error loading applications',
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                  );
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.work_off,
+                          size: 64,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(height: 16),
+                        TextWidget(
+                          text: 'No jobs posted yet',
+                          fontSize: 18,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 8),
+                        TextWidget(
+                          text: 'Post a job to start receiving applications',
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: snapshot.data!.docs.length,
+                  itemBuilder: (context, index) {
+                    final jobDoc = snapshot.data!.docs[index];
+                    final jobData = jobDoc.data() as Map<String, dynamic>;
+                    final applications = jobData['applications'] as List? ?? [];
+
+                    if (applications.isEmpty) {
+                      return Container();
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Job title
+                        TextWidget(
+                          text: jobData['title'] ?? 'Job Position',
+                          fontSize: 18,
+                          color: Colors.white,
+                          isBold: true,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Applications for this job
+                        ...applications.map((application) {
+                          return _buildApplicationCard(application, jobDoc.id);
+                        }).toList(),
+
+                        const SizedBox(height: 24),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApplicationCard(Map<String, dynamic> application, String jobId) {
+    final appliedAt = application['appliedAt'] as Timestamp?;
+    final date = appliedAt != null
+        ? '${appliedAt.toDate().day}/${appliedAt.toDate().month}/${appliedAt.toDate().year}'
+        : 'Unknown date';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Applicant name and status
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              TextWidget(
+                text: application['applicantName'] ?? 'Unknown Applicant',
+                fontSize: 16,
+                color: Colors.white,
+                isBold: true,
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(application['status']),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: TextWidget(
+                  text: (application['status'] as String? ?? 'pending')
+                      .toUpperCase(),
+                  fontSize: 10,
+                  color: Colors.white,
+                  isBold: true,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Contact info
+          Row(
+            children: [
+              Icon(Icons.email, size: 14, color: Colors.grey[400]),
+              const SizedBox(width: 4),
+              Expanded(
+                child: TextWidget(
+                  text: application['applicantEmail'] ?? 'No email',
+                  fontSize: 12,
+                  color: Colors.grey[400],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 4),
+
+          Row(
+            children: [
+              Icon(Icons.phone, size: 14, color: Colors.grey[400]),
+              const SizedBox(width: 4),
+              Expanded(
+                child: TextWidget(
+                  text: application['applicantPhone'] ?? 'No phone',
+                  fontSize: 12,
+                  color: Colors.grey[400],
+                ),
+              ),
+            ],
+          ),
+
+          // Cover letter if available
+          if (application['coverLetter'] != null &&
+              application['coverLetter'].toString().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            TextWidget(
+              text: 'Cover Letter:',
+              fontSize: 12,
+              color: Colors.grey[300],
+              isBold: true,
+            ),
+            const SizedBox(height: 4),
+            TextWidget(
+              text: application['coverLetter'],
+              fontSize: 12,
+              color: Colors.grey[400],
+              maxLines: 3,
+            ),
+          ],
+
+          const SizedBox(height: 12),
+
+          // Action buttons
+          Row(
+            children: [
+              // View resume button
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _viewResume(application['resumeUrl']),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primary,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.description,
+                          size: 16, color: Colors.white),
+                      const SizedBox(width: 4),
+                      TextWidget(
+                        text: 'View Resume',
+                        fontSize: 12,
+                        color: Colors.white,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Applied date
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: TextWidget(
+              text: 'Applied on $date',
+              fontSize: 10,
+              color: Colors.grey[600],
+              align: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getStatusColor(String? status) {
+    switch (status) {
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.orange;
+    }
+  }
+
+  Future<void> _viewResume(String? resumeUrl) async {
+    Navigator.pop(context);
+    if (resumeUrl != null && resumeUrl.isNotEmpty) {
+      final uri = Uri.parse(resumeUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open resume'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

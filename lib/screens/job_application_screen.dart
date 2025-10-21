@@ -156,7 +156,7 @@ class _JobApplicationScreenState extends State<JobApplicationScreen> {
   @override
   Widget build(BuildContext context) {
     final job = widget.job ?? <String, dynamic>{};
-    print(widget.shopId);
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(

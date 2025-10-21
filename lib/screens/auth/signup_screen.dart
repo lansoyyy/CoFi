@@ -6,7 +6,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/text_widget.dart';
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  final String accountType; // 'user' or 'business'
+  
+  const SignupScreen({super.key, required this.accountType});
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
@@ -61,6 +63,7 @@ class _SignupScreenState extends State<SignupScreen> {
         'bookmarks': [],
         'visited': [],
         'reviews': [],
+        'accountType': widget.accountType, // 'user' or 'business'
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 

@@ -1,4 +1,5 @@
 import 'package:cofi/screens/auth/signup_screen.dart';
+import 'package:cofi/screens/auth/account_type_selection_screen.dart';
 import 'package:cofi/screens/home_screen.dart';
 import 'package:cofi/services/google_sign_in_service.dart';
 import 'package:flutter/material.dart';
@@ -269,7 +270,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const SignupScreen(),
+                                builder: (context) => const AccountTypeSelectionScreen(),
                               ),
                             );
                           },

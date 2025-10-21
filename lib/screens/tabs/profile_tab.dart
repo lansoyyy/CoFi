@@ -252,124 +252,31 @@ class ProfileTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 32),
-            // Contribute to Community
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: TextWidget(
-                text: 'Contribute to Community',
-                fontSize: 18,
-                color: Colors.white,
-                isBold: true,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Builder(
-                builder: (context) {
-                  final user = FirebaseAuth.instance.currentUser;
-                  final stream = user == null
-                      ? null
-                      : FirebaseFirestore.instance
-                          .collection('shops')
-                          .where('posterId', isEqualTo: user.uid)
-                          .limit(1)
-                          .snapshots();
-
-                  return StreamBuilder<QuerySnapshot>(
-                    stream: stream,
-                    builder: (context, snapshot) {
-                      final hasShop =
-                          snapshot.hasData && snapshot.data!.docs.isNotEmpty;
-                      String label = hasShop ? 'View Shop' : 'Submit A Shop';
-                      String subtitle = '';
-
-                      if (hasShop) {
-                        final doc = snapshot.data!.docs.first;
-                        final data = doc.data() as Map<String, dynamic>;
-                        final isVerified = data['isVerified'] ?? false;
-
-                        if (!isVerified) {
-                          label = 'Shop Under Verification';
-                          subtitle = 'Your shop is being reviewed';
-                        }
-                      }
-
-                      void navigate() {
-                        if (hasShop) {
-                          final doc = snapshot.data!.docs.first;
-                          final data = doc.data() as Map<String, dynamic>;
-                          Navigator.pushNamed(
-                            context,
-                            '/businessProfile',
-                            arguments: {
-                              ...data,
-                              'id': doc.id,
-                            },
-                          );
-                        } else {
-                          Navigator.pushNamed(context, '/submitShop');
-                        }
-                      }
-
-                      return GestureDetector(
-                        onTap: navigate,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(32),
-                          ),
-                          child: Row(
-                            children: [
-                              const SizedBox(width: 16),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: const BoxDecoration(
-                                    color: primary,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Center(
-                                    child: Icon(Icons.local_cafe,
-                                        color: Colors.white, size: 28),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    TextWidget(
-                                      text: label,
-                                      fontSize: 18,
-                                      color: Colors.white,
-                                      isBold: true,
-                                    ),
-                                    if (subtitle.isNotEmpty)
-                                      TextWidget(
-                                        text: subtitle,
-                                        fontSize: 14,
-                                        color: Colors.white70,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.arrow_forward_ios,
-                                    color: Colors.white, size: 22),
-                                onPressed: navigate,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+            // Contribute to Community or Business Dashboard based on account type
+            Builder(
+              builder: (context) {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user == null) return const SizedBox.shrink();
+                
+                return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .snapshots(),
+                  builder: (context, userSnapshot) {
+                    final userData = userSnapshot.data?.data();
+                    final accountType = userData?['accountType'] as String? ?? 'user';
+                    
+                    // Business Account - Show Business Dashboard
+                    if (accountType == 'business') {
+                      return _buildBusinessSection(context, user.uid);
+                    }
+                    
+                    // User Account - Show Contribute Section
+                    return _buildUserContributeSection(context, user.uid);
+                  },
+                );
+              },
             ),
             const SizedBox(height: 32),
             // Find the perfect cafe
@@ -554,6 +461,293 @@ class ProfileTab extends StatelessWidget {
           onTap: onTap,
         );
       },
+    );
+  }
+
+  // User Account: Show contribute section (submit shop, view submission status)
+  Widget _buildUserContributeSection(BuildContext context, String uid) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: TextWidget(
+            text: 'Contribute to Community',
+            fontSize: 18,
+            color: Colors.white,
+            isBold: true,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('shops')
+                .where('posterId', isEqualTo: uid)
+                .limit(1)
+                .snapshots(),
+            builder: (context, snapshot) {
+              final hasShop = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+              String label = hasShop ? 'View Submission' : 'Submit A Shop';
+              String subtitle = '';
+              IconData statusIcon = Icons.local_cafe;
+              Color statusColor = primary;
+
+              if (hasShop) {
+                final doc = snapshot.data!.docs.first;
+                final data = doc.data() as Map<String, dynamic>;
+                final isVerified = data['isVerified'] ?? false;
+
+                if (isVerified) {
+                  label = 'Submission Approved';
+                  subtitle = 'Your shop is live';
+                  statusIcon = Icons.check_circle;
+                  statusColor = Colors.green;
+                } else {
+                  label = 'Submission Pending';
+                  subtitle = 'Your shop is under review';
+                  statusIcon = Icons.pending;
+                  statusColor = Colors.orange;
+                }
+              }
+
+              void navigate() {
+                if (hasShop) {
+                  final doc = snapshot.data!.docs.first;
+                  final data = doc.data() as Map<String, dynamic>;
+                  final isVerified = data['isVerified'] ?? false;
+                  
+                  // User can only view submission status, not manage
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: Colors.grey[900],
+                      title: Row(
+                        children: [
+                          Icon(statusIcon, color: statusColor, size: 28),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              label,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Shop Name: ${data['name'] ?? 'Unknown'}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Status: ${isVerified ? 'Approved' : 'Pending Verification'}',
+                            style: TextStyle(color: statusColor),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            isVerified
+                                ? 'Your shop is now visible to all users!'
+                                : 'Your shop will be visible once approved by our team.',
+                            style: const TextStyle(color: Colors.white60, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('Close'),
+                        ),
+                      ],
+                    ),
+                  );
+                } else {
+                  Navigator.pushNamed(context, '/submitShop');
+                }
+              }
+
+              return GestureDetector(
+                onTap: navigate,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 16),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Icon(statusIcon, color: Colors.white, size: 28),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextWidget(
+                              text: label,
+                              fontSize: 18,
+                              color: Colors.white,
+                              isBold: true,
+                            ),
+                            if (subtitle.isNotEmpty)
+                              TextWidget(
+                                text: subtitle,
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_forward_ios,
+                            color: Colors.white, size: 22),
+                        onPressed: navigate,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Business Account: Show business dashboard with shop management
+  Widget _buildBusinessSection(BuildContext context, String uid) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: TextWidget(
+            text: 'My Business',
+            fontSize: 18,
+            color: Colors.white,
+            isBold: true,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('shops')
+                .where('posterId', isEqualTo: uid)
+                .limit(1)
+                .snapshots(),
+            builder: (context, snapshot) {
+              final hasShop = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+              String label = hasShop ? 'Manage My Shop' : 'Claim or Submit Shop';
+              String subtitle = hasShop ? 'View dashboard & analytics' : 'Get started with your business';
+
+              if (hasShop) {
+                final doc = snapshot.data!.docs.first;
+                final data = doc.data() as Map<String, dynamic>;
+                final isVerified = data['isVerified'] ?? false;
+
+                if (!isVerified) {
+                  label = 'Shop Under Verification';
+                  subtitle = 'Dashboard available after approval';
+                }
+              }
+
+              void navigate() {
+                if (hasShop) {
+                  final doc = snapshot.data!.docs.first;
+                  final data = doc.data() as Map<String, dynamic>;
+                  Navigator.pushNamed(
+                    context,
+                    '/businessProfile',
+                    arguments: {
+                      ...data,
+                      'id': doc.id,
+                    },
+                  );
+                } else {
+                  // Show options: Claim existing shop or Submit new shop
+                  Navigator.pushNamed(context, '/businessDashboard');
+                }
+              }
+
+              return GestureDetector(
+                onTap: navigate,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(
+                      color: const Color(0xFF2563EB).withOpacity(0.3),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 16),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF2563EB),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.business, color: Colors.white, size: 28),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextWidget(
+                              text: label,
+                              fontSize: 18,
+                              color: Colors.white,
+                              isBold: true,
+                            ),
+                            if (subtitle.isNotEmpty)
+                              TextWidget(
+                                text: subtitle,
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_forward_ios,
+                            color: Colors.white, size: 22),
+                        onPressed: navigate,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

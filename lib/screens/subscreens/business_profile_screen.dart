@@ -3,6 +3,7 @@ import 'package:cofi/widgets/my_jobs_bottom_sheet.dart';
 import 'package:cofi/widgets/post_job_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
@@ -102,7 +103,13 @@ class BusinessProfileScreen extends StatelessWidget {
                     null, // isVerified
                   ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
+
+                // Analytics Stats Section
+                if (shopId != null && shopId.isNotEmpty)
+                  _buildAnalyticsSection(shopId),
+
+                const SizedBox(height: 32),
 
                 // Grid of sections
                 Column(
@@ -423,4 +430,150 @@ class BusinessProfileScreen extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildAnalyticsSection(String shopId) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextWidget(
+            text: 'Analytics & Stats',
+            fontSize: 18,
+            color: Colors.white,
+            isBold: true,
+          ),
+          const SizedBox(height: 20),
+          
+          // Stats Grid
+          StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('shops')
+                .doc(shopId)
+                .snapshots(),
+            builder: (context, shopSnapshot) {
+              final shopData = shopSnapshot.data?.data();
+              final ratings = (shopData?['ratings'] as num?)?.toDouble() ?? 0.0;
+              final ratingCount = shopData?['ratingCount'] as int? ?? 0;
+
+              return Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatItem(
+                          icon: Icons.star,
+                          label: 'Rating',
+                          value: ratings > 0 ? ratings.toStringAsFixed(1) : '0.0',
+                          color: Colors.amber,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildStatItem(
+                          icon: Icons.rate_review,
+                          label: 'Total Ratings',
+                          value: ratingCount.toString(),
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('shops')
+                              .doc(shopId)
+                              .collection('visits')
+                              .snapshots(),
+                          builder: (context, visitSnapshot) {
+                            final visitCount = visitSnapshot.data?.docs.length ?? 0;
+                            return _buildStatItem(
+                              icon: Icons.people,
+                              label: 'Customer Visits',
+                              value: visitCount.toString(),
+                              color: Colors.green,
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: StreamBuilder<DocumentSnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(FirebaseAuth.instance.currentUser?.uid)
+                              .snapshots(),
+                          builder: (context, userSnapshot) {
+                            // Count users who bookmarked this shop
+                            return FutureBuilder<QuerySnapshot>(
+                              future: FirebaseFirestore.instance
+                                  .collection('users')
+                                  .where('bookmarks', arrayContains: shopId)
+                                  .get(),
+                              builder: (context, bookmarkSnapshot) {
+                                final savedCount = bookmarkSnapshot.data?.docs.length ?? 0;
+                                return _buildStatItem(
+                                  icon: Icons.bookmark,
+                                  label: 'Saved',
+                                  value: savedCount.toString(),
+                                  color: primary,
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[850],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 8),
+          TextWidget(
+            text: value,
+            fontSize: 24,
+            color: Colors.white,
+            isBold: true,
+          ),
+          const SizedBox(height: 4),
+          TextWidget(
+            text: label,
+            fontSize: 12,
+            color: Colors.grey[400]!,
+            align: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
 }
+

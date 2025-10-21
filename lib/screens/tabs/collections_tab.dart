@@ -277,6 +277,8 @@ class _CollectionsTabState extends State<CollectionsTab> {
                                           context,
                                           title: title,
                                           shopsList: shopsList,
+                                          listId: d.id,
+                                          userId: user.uid,
                                         );
                                       } catch (e) {
                                         if (!mounted) return;
@@ -339,6 +341,8 @@ class _CollectionsTabState extends State<CollectionsTab> {
                                           title: title,
                                           shopsList: const <Map<String,
                                               dynamic>>[],
+                                          listId: d.id,
+                                          userId: user.uid,
                                         );
                                         return;
                                       }
@@ -370,6 +374,8 @@ class _CollectionsTabState extends State<CollectionsTab> {
                                         context,
                                         title: title,
                                         shopsList: shopsList,
+                                        listId: d.id,
+                                        userId: user.uid,
                                       );
                                     } catch (e) {
                                       if (!mounted) return;

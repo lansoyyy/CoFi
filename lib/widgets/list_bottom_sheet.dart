@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../widgets/text_widget.dart';
 
 class ListBottomSheet extends StatelessWidget {
@@ -9,6 +10,8 @@ class ListBottomSheet extends StatelessWidget {
   final Stream<List<String>>? shopIdsStream;
   final Stream<QuerySnapshot<Map<String, dynamic>>>? shopsStream;
   final List<Map<String, dynamic>>? shopsList;
+  final String? listId;
+  final String? userId;
 
   const ListBottomSheet(
       {Key? key,
@@ -16,7 +19,9 @@ class ListBottomSheet extends StatelessWidget {
       this.itemsStream,
       this.shopIdsStream,
       this.shopsStream,
-      this.shopsList})
+      this.shopsList,
+      this.listId,
+      this.userId})
       : super(key: key);
 
   @override
@@ -56,11 +61,21 @@ class ListBottomSheet extends StatelessWidget {
                   color: Colors.white,
                   isBold: true,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
+                Row(
+                  children: [
+                    // Add share button for user-created lists
+                    if (listId != null && userId != null)
+                      IconButton(
+                        icon: const Icon(Icons.share, color: Colors.white),
+                        onPressed: () => _shareCollection(context),
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -435,12 +450,65 @@ class ListBottomSheet extends StatelessWidget {
     );
   }
 
+  void _shareCollection(BuildContext context) async {
+    if (listId == null || userId == null) return;
+
+    try {
+      // Save collection to shared collections
+      final sharedCollectionRef =
+          await FirebaseFirestore.instance.collection('sharedCollections').add({
+        'userId': userId,
+        'listId': listId,
+        'title': title,
+        'sharedBy':
+            'User', // You could get the actual username from user profile
+        'sharedAt': FieldValue.serverTimestamp(),
+        'shopCount': shopsList?.length ?? 0,
+      });
+
+      // Generate shareable link
+      final shareableLink =
+          'https://cofi.app/shared-collection/${sharedCollectionRef.id}';
+
+      // Create share content
+      final String shareText =
+          'Check out my coffee collection "$title" on Cofi!\n\n$shareableLink';
+
+      // Share the collection
+      await Share.share(
+        shareText,
+        subject: 'Coffee Collection: $title',
+      );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Collection shared successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error sharing collection: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to share collection'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   static void show(BuildContext context,
       {required String title,
       List<Map<String, dynamic>>? shopsList,
       Stream<QuerySnapshot<Map<String, dynamic>>>? itemsStream,
       Stream<List<String>>? shopIdsStream,
-      Stream<QuerySnapshot<Map<String, dynamic>>>? shopsStream}) {
+      Stream<QuerySnapshot<Map<String, dynamic>>>? shopsStream,
+      String? listId,
+      String? userId}) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -450,7 +518,9 @@ class ListBottomSheet extends StatelessWidget {
           shopsList: shopsList,
           itemsStream: itemsStream,
           shopIdsStream: shopIdsStream,
-          shopsStream: shopsStream),
+          shopsStream: shopsStream,
+          listId: listId,
+          userId: userId),
     );
   }
 }

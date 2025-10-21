@@ -24,14 +24,26 @@ class PostJobBottomSheet extends StatefulWidget {
 
 class _PostJobBottomSheetState extends State<PostJobBottomSheet> {
   final _jobNameController = TextEditingController();
-  final _typeController = TextEditingController();
   final _payController = TextEditingController();
   final _requiredController = TextEditingController();
-  final _startDateController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _emailController = TextEditingController();
   final _linkController = TextEditingController();
   bool _saving = false;
+
+  // Job type options
+  final List<String> _jobTypes = [
+    'Barista',
+    'Cashier',
+    'Server',
+    'Cook',
+    'Baker',
+    'Manager',
+    'Dishwasher',
+    'Host/Hostess',
+    'Other'
+  ];
+  String _selectedJobType = 'Barista';
 
   @override
   void initState() {
@@ -41,10 +53,9 @@ class _PostJobBottomSheetState extends State<PostJobBottomSheet> {
 
   Future<void> _saveJob() async {
     final title = _jobNameController.text.trim();
-    final type = _typeController.text.trim();
+    final type = _selectedJobType;
     final pay = _payController.text.trim();
     final requiredSkills = _requiredController.text.trim();
-    final startDate = _startDateController.text.trim();
     final description = _descriptionController.text.trim();
     final email = _emailController.text.trim();
     final link = _linkController.text.trim();
@@ -61,9 +72,8 @@ class _PostJobBottomSheetState extends State<PostJobBottomSheet> {
       final data = {
         'title': title,
         'type': type,
-        'pay': pay,
-        'required': requiredSkills,
-        'startDate': startDate,
+        'rate': pay,
+        'qualifications': requiredSkills,
         'description': description,
         'email': email,
         'link': link,
@@ -97,10 +107,8 @@ class _PostJobBottomSheetState extends State<PostJobBottomSheet> {
   @override
   void dispose() {
     _jobNameController.dispose();
-    _typeController.dispose();
     _payController.dispose();
     _requiredController.dispose();
-    _startDateController.dispose();
     _descriptionController.dispose();
     _emailController.dispose();
     _linkController.dispose();
@@ -158,23 +166,18 @@ class _PostJobBottomSheetState extends State<PostJobBottomSheet> {
 
                       const SizedBox(height: 20),
 
-                      // Type
-                      _buildField('Type', _typeController),
+                      // Job Type
+                      _buildJobTypeDropdown(),
 
                       const SizedBox(height: 20),
 
-                      // Pay
-                      _buildField('Pay', _payController),
+                      // Rate
+                      _buildField('Rate', _payController),
 
                       const SizedBox(height: 20),
 
-                      // Required
-                      _buildField('Required', _requiredController),
-
-                      const SizedBox(height: 20),
-
-                      // Start Date
-                      _buildField('Start Date', _startDateController),
+                      // Qualifications
+                      _buildField('Qualifications', _requiredController),
 
                       const SizedBox(height: 20),
 
@@ -268,6 +271,60 @@ class _PostJobBottomSheetState extends State<PostJobBottomSheet> {
                 color: Colors.grey,
                 fontSize: 14,
               ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildJobTypeDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextWidget(
+          text: 'Job Type',
+          fontSize: 16,
+          color: Colors.white,
+          isBold: true,
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[800],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedJobType,
+              isExpanded: true,
+              dropdownColor: Colors.grey[800],
+              icon: const Icon(
+                Icons.arrow_drop_down,
+                color: Colors.grey,
+              ),
+              style: const TextStyle(
+                color: Colors.grey,
+                fontSize: 14,
+              ),
+              items: _jobTypes.map((String type) {
+                return DropdownMenuItem<String>(
+                  value: type,
+                  child: Text(
+                    type,
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedJobType = newValue!;
+                });
+              },
             ),
           ),
         ),

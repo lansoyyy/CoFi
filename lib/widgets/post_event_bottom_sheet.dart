@@ -27,13 +27,15 @@ class PostEventBottomSheet extends StatefulWidget {
 
 class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
   final _eventNameController = TextEditingController();
-  final _dateController = TextEditingController();
   final _addressController = TextEditingController();
-  final _startDateController = TextEditingController();
   final _aboutController = TextEditingController();
   final _emailController = TextEditingController();
   final _linkController = TextEditingController();
   bool _saving = false;
+
+  // Date variables
+  DateTime? _startDate;
+  DateTime? _endDate;
 
   // Image picker related variables
   final ImagePicker _picker = ImagePicker();
@@ -47,17 +49,16 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
 
   Future<void> _saveEvent() async {
     final title = _eventNameController.text.trim();
-    final date = _dateController.text.trim();
     final address = _addressController.text.trim();
-    final startDate = _startDateController.text.trim();
     final about = _aboutController.text.trim();
     final email = _emailController.text.trim();
     final link = _linkController.text.trim();
 
-    if (title.isEmpty || date.isEmpty) {
+    if (title.isEmpty || _startDate == null || _endDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Please enter at least Event Name and Date.')),
+            content: Text(
+                'Please enter Event Name and select both start and end dates.')),
       );
       return;
     }
@@ -72,9 +73,9 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
 
       final data = {
         'title': title,
-        'date': date,
         'address': address,
-        'startDate': startDate,
+        'startDate': _startDate,
+        'endDate': _endDate,
         'about': about,
         'email': email,
         'link': link,
@@ -159,9 +160,7 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
   @override
   void dispose() {
     _eventNameController.dispose();
-    _dateController.dispose();
     _addressController.dispose();
-    _startDateController.dispose();
     _aboutController.dispose();
     _emailController.dispose();
     _linkController.dispose();
@@ -219,18 +218,36 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
 
                       const SizedBox(height: 20),
 
-                      // Date
-                      _buildField('Date', _dateController),
+                      // Start Date
+                      _buildDateField('Start Date', _startDate, (date) {
+                        setState(() {
+                          _startDate = date;
+                          // Ensure end date is not before start date
+                          if (_endDate != null &&
+                              _endDate!.isBefore(_startDate!)) {
+                            _endDate = _startDate;
+                          }
+                        });
+                      }),
+
+                      const SizedBox(height: 20),
+
+                      // End Date
+                      _buildDateField('End Date', _endDate, (date) {
+                        setState(() {
+                          _endDate = date;
+                          // Ensure end date is not before start date
+                          if (_startDate != null &&
+                              _endDate!.isBefore(_startDate!)) {
+                            _endDate = _startDate;
+                          }
+                        });
+                      }),
 
                       const SizedBox(height: 20),
 
                       // Address
                       _buildField('Address', _addressController),
-
-                      const SizedBox(height: 20),
-
-                      // Start Date
-                      _buildField('Start Date', _startDateController),
 
                       const SizedBox(height: 20),
 
@@ -423,5 +440,87 @@ class _PostEventBottomSheetState extends State<PostEventBottomSheet> {
         ),
       ],
     );
+  }
+
+  Widget _buildDateField(
+      String label, DateTime? selectedDate, Function(DateTime) onDateChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextWidget(
+          text: label,
+          fontSize: 16,
+          color: Colors.white,
+          isBold: true,
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () async {
+            final DateTime? picked = await showDatePicker(
+              context: context,
+              initialDate: selectedDate ?? DateTime.now(),
+              firstDate: DateTime.now(),
+              lastDate: DateTime(2100),
+            );
+            if (picked != null) {
+              onDateChanged(picked);
+            }
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[800],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_today,
+                  color: Colors.grey[600],
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  selectedDate != null
+                      ? _formatDate(selectedDate)
+                      : 'Select $label',
+                  style: TextStyle(
+                    color:
+                        selectedDate != null ? Colors.grey : Colors.grey[600],
+                    fontSize: 14,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.arrow_drop_down,
+                  color: Colors.grey[600],
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 }

@@ -695,13 +695,197 @@ class ProfileTab extends StatelessWidget {
 
   // User Account: Show contribute section (submit shop, view submission status)
   Widget _buildUserContributeSection(BuildContext context, String uid) {
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream:
+          FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+      builder: (context, userSnapshot) {
+        final userData = userSnapshot.data?.data();
+        final accountType = userData?['accountType'] as String? ?? 'user';
+
+        // For regular users, show job application section
+        if (accountType == 'user') {
+          return _buildUserJobApplicationSection(context, uid);
+        }
+
+        // For other account types, show shop submission section
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: TextWidget(
+                text: 'Contribute to Community',
+                fontSize: 18,
+                color: Colors.white,
+                isBold: true,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('shops')
+                    .where('posterId', isEqualTo: uid)
+                    .limit(1)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  final hasShop =
+                      snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+                  String label = hasShop ? 'View Submission' : 'Submit A Shop';
+                  String subtitle = '';
+                  IconData statusIcon = Icons.local_cafe;
+                  Color statusColor = primary;
+
+                  if (hasShop) {
+                    final doc = snapshot.data!.docs.first;
+                    final data = doc.data() as Map<String, dynamic>;
+                    final isVerified = data['isVerified'] ?? false;
+
+                    if (isVerified) {
+                      label = 'Submission Approved';
+                      subtitle = 'Your shop is live';
+                      statusIcon = Icons.check_circle;
+                      statusColor = Colors.green;
+                    } else {
+                      label = 'Submission Pending';
+                      subtitle = 'Your shop is under review';
+                      statusIcon = Icons.pending;
+                      statusColor = Colors.orange;
+                    }
+                  }
+
+                  void navigate() {
+                    if (hasShop) {
+                      final doc = snapshot.data!.docs.first;
+                      final data = doc.data() as Map<String, dynamic>;
+                      final isVerified = data['isVerified'] ?? false;
+
+                      // User can only view submission status, not manage
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          backgroundColor: Colors.grey[900],
+                          title: Row(
+                            children: [
+                              Icon(statusIcon, color: statusColor, size: 28),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  label,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Shop Name: ${data['name'] ?? 'Unknown'}',
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Status: ${isVerified ? 'Approved' : 'Pending Verification'}',
+                                style: TextStyle(color: statusColor),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                isVerified
+                                    ? 'Your shop is now visible to all users!'
+                                    : 'Your shop will be visible once approved by our team.',
+                                style: const TextStyle(
+                                    color: Colors.white60, fontSize: 14),
+                              ),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                      );
+                    } else {
+                      Navigator.pushNamed(context, '/submitShop');
+                    }
+                  }
+
+                  return GestureDetector(
+                    onTap: navigate,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(32),
+                      ),
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 16),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Icon(statusIcon,
+                                    color: Colors.white, size: 28),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TextWidget(
+                                  text: label,
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                  isBold: true,
+                                ),
+                                if (subtitle.isNotEmpty)
+                                  TextWidget(
+                                    text: subtitle,
+                                    fontSize: 14,
+                                    color: Colors.white70,
+                                  ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.arrow_forward_ios,
+                                color: Colors.white, size: 22),
+                            onPressed: navigate,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // User Account: Show job application section for regular users
+  Widget _buildUserJobApplicationSection(BuildContext context, String uid) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: TextWidget(
-            text: 'Contribute to Community',
+            text: 'Job Applications',
             fontSize: 18,
             color: Colors.white,
             isBold: true,
@@ -711,98 +895,31 @@ class ProfileTab extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('shops')
-                .where('posterId', isEqualTo: uid)
-                .limit(1)
-                .snapshots(),
+            stream:
+                FirebaseFirestore.instance.collectionGroup('jobs').snapshots(),
             builder: (context, snapshot) {
-              final hasShop =
-                  snapshot.hasData && snapshot.data!.docs.isNotEmpty;
-              String label = hasShop ? 'View Submission' : 'Submit A Shop';
-              String subtitle = '';
-              IconData statusIcon = Icons.local_cafe;
-              Color statusColor = primary;
+              // Filter documents to find those that actually contain the user's application
+              final relevantDocs = snapshot.data?.docs.where((doc) {
+                    final applications =
+                        (doc.data() as Map<String, dynamic>?)?['applications']
+                                as List<dynamic>? ??
+                            [];
+                    return applications.any((app) =>
+                        app is Map<String, dynamic> &&
+                        app['applicantId'] == uid);
+                  }).toList() ??
+                  [];
 
-              if (hasShop) {
-                final doc = snapshot.data!.docs.first;
-                final data = doc.data() as Map<String, dynamic>;
-                final isVerified = data['isVerified'] ?? false;
-
-                if (isVerified) {
-                  label = 'Submission Approved';
-                  subtitle = 'Your shop is live';
-                  statusIcon = Icons.check_circle;
-                  statusColor = Colors.green;
-                } else {
-                  label = 'Submission Pending';
-                  subtitle = 'Your shop is under review';
-                  statusIcon = Icons.pending;
-                  statusColor = Colors.orange;
-                }
-              }
-
-              void navigate() {
-                if (hasShop) {
-                  final doc = snapshot.data!.docs.first;
-                  final data = doc.data() as Map<String, dynamic>;
-                  final isVerified = data['isVerified'] ?? false;
-
-                  // User can only view submission status, not manage
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      backgroundColor: Colors.grey[900],
-                      title: Row(
-                        children: [
-                          Icon(statusIcon, color: statusColor, size: 28),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              label,
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        ],
-                      ),
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Shop Name: ${data['name'] ?? 'Unknown'}',
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Status: ${isVerified ? 'Approved' : 'Pending Verification'}',
-                            style: TextStyle(color: statusColor),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            isVerified
-                                ? 'Your shop is now visible to all users!'
-                                : 'Your shop will be visible once approved by our team.',
-                            style: const TextStyle(
-                                color: Colors.white60, fontSize: 14),
-                          ),
-                        ],
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(ctx).pop(),
-                          child: const Text('Close'),
-                        ),
-                      ],
-                    ),
-                  );
-                } else {
-                  Navigator.pushNamed(context, '/submitShop');
-                }
-              }
+              final hasApplications = relevantDocs.isNotEmpty;
 
               return GestureDetector(
-                onTap: navigate,
+                onTap: () {
+                  if (hasApplications) {
+                    _showJobApplicationsDialog(context, relevantDocs);
+                  } else {
+                    _showAvailableJobsDialog(context);
+                  }
+                },
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.08),
@@ -817,12 +934,15 @@ class ProfileTab extends StatelessWidget {
                           width: 48,
                           height: 48,
                           decoration: BoxDecoration(
-                            color: statusColor,
+                            color: hasApplications ? Colors.green : primary,
                             shape: BoxShape.circle,
                           ),
                           child: Center(
-                            child:
-                                Icon(statusIcon, color: Colors.white, size: 28),
+                            child: Icon(
+                              hasApplications ? Icons.work_history : Icons.work,
+                              color: Colors.white,
+                              size: 28,
+                            ),
                           ),
                         ),
                       ),
@@ -832,24 +952,33 @@ class ProfileTab extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             TextWidget(
-                              text: label,
+                              text: hasApplications
+                                  ? 'View Applications'
+                                  : 'Find Jobs',
                               fontSize: 18,
                               color: Colors.white,
                               isBold: true,
                             ),
-                            if (subtitle.isNotEmpty)
-                              TextWidget(
-                                text: subtitle,
-                                fontSize: 14,
-                                color: Colors.white70,
-                              ),
+                            TextWidget(
+                              text: hasApplications
+                                  ? 'You have ${relevantDocs.length} application(s)'
+                                  : 'Browse available job opportunities',
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
                           ],
                         ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.arrow_forward_ios,
                             color: Colors.white, size: 22),
-                        onPressed: navigate,
+                        onPressed: () {
+                          if (hasApplications) {
+                            _showJobApplicationsDialog(context, relevantDocs);
+                          } else {
+                            _showAvailableJobsDialog(context);
+                          }
+                        },
                       ),
                     ],
                   ),
@@ -859,6 +988,194 @@ class ProfileTab extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  void _showJobApplicationsDialog(
+      BuildContext context, List<DocumentSnapshot> jobDocs) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: Row(
+          children: [
+            const Icon(Icons.work_history, color: Colors.green, size: 28),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Your Job Applications',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Here are the jobs you\'ve applied to:',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              ...jobDocs.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final applications =
+                    (data['applications'] as List<dynamic>?) ?? [];
+                final userApplications = applications
+                    .where((app) =>
+                        app is Map<String, dynamic> &&
+                        app['applicantId'] ==
+                            FirebaseAuth.instance.currentUser?.uid)
+                    .toList();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[800],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextWidget(
+                            text: data['title'] ?? 'Unknown Position',
+                            fontSize: 16,
+                            color: Colors.white,
+                            isBold: true,
+                          ),
+                          const SizedBox(height: 4),
+                          TextWidget(
+                            text: data['address'] ?? 'Unknown Location',
+                            fontSize: 14,
+                            color: Colors.white70,
+                          ),
+                          const SizedBox(height: 8),
+                          ...userApplications.map((app) {
+                            final appData = app as Map<String, dynamic>;
+                            final status =
+                                appData['status'] as String? ?? 'pending';
+                            final appliedAt =
+                                appData['appliedAt'] as Timestamp?;
+                            final dateStr = appliedAt != null
+                                ? '${appliedAt.toDate().day}/${appliedAt.toDate().month}/${appliedAt.toDate().year}'
+                                : 'Unknown date';
+
+                            Color statusColor = Colors.orange;
+                            String statusText = 'Pending';
+
+                            if (status == 'accepted') {
+                              statusColor = Colors.green;
+                              statusText = 'Accepted';
+                            } else if (status == 'rejected') {
+                              statusColor = Colors.red;
+                              statusText = 'Rejected';
+                            }
+
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: statusColor.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      statusText,
+                                      style: TextStyle(
+                                        color: statusColor,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  TextWidget(
+                                    text: 'Applied on $dateStr',
+                                    fontSize: 12,
+                                    color: Colors.white60,
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                );
+              }).toList(),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAvailableJobsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: Row(
+          children: [
+            const Icon(Icons.work, color: primary, size: 28),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Find Job Opportunities',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Browse the Explore tab to find available job postings from coffee shops.',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Tap on any job posting to view details and submit your application.',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              // Navigate to explore tab
+              DefaultTabController.of(context)
+                  ?.animateTo(1); // Explore tab index
+            },
+            child: const Text('Go to Explore'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
     );
   }
 

@@ -197,7 +197,7 @@ class CommunityTab extends StatelessWidget {
                   return Column(
                     children: docs.map((d) {
                       final collection = d.data();
-                      return _buildSharedCollectionCard(
+                      return _buildSharedCollectionItem(
                           context, collection, d.id);
                     }).toList(),
                   );
@@ -366,107 +366,188 @@ class CommunityTab extends StatelessWidget {
     return 'Today';
   }
 
-  Widget _buildSharedCollectionCard(BuildContext context,
+  Widget _buildSharedCollectionItem(BuildContext context,
       Map<String, dynamic> collection, String collectionId) {
     final title = collection['title'] ?? 'Untitled Collection';
-    final shopCount = collection['shopCount'] ?? 0;
     final sharedBy = collection['sharedBy'] ?? 'Anonymous';
     final sharedAt = collection['sharedAt'] as Timestamp?;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[850],
-        borderRadius: BorderRadius.circular(12),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: primary,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(
+            Icons.collections_bookmark,
+            color: Colors.white,
+            size: 24,
+          ),
+        ),
+        title: TextWidget(
+          text: title,
+          fontSize: 16,
+          color: Colors.white,
+          isBold: true,
+        ),
+        subtitle: TextWidget(
+          text:
+              'Shared by $sharedBy • ${sharedAt != null ? _formatTimestamp(sharedAt) : 'Recently'}',
+          fontSize: 13,
+          color: Colors.white70,
+        ),
+        trailing: const Icon(
+          Icons.arrow_forward_ios,
+          color: Colors.white54,
+          size: 16,
+        ),
+        onTap: () {
+          _showCollectionDetailsBottomSheet(context, collectionId, collection);
+        },
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
+    );
+  }
+
+  void _showCollectionDetailsBottomSheet(BuildContext context,
+      String collectionId, Map<String, dynamic> collection) {
+    final title = collection['title'] ?? 'Untitled Collection';
+    final shopCount = collection['shopCount'] ?? 0;
+    final sharedBy = collection['sharedBy'] ?? 'Anonymous';
+    final sharedAt = collection['sharedAt'] as Timestamp?;
+    final listId = collection['listId'] ?? '';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.35,
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          children: [
+            // Handle bar
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Container(
                 width: 40,
-                height: 40,
+                height: 4,
                 decoration: BoxDecoration(
-                  color: primary,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.collections_bookmark,
-                  color: Colors.white,
-                  size: 24,
+                  color: Colors.white38,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextWidget(
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: TextWidget(
                       text: title,
-                      fontSize: 16,
+                      fontSize: 18,
                       color: Colors.white,
                       isBold: true,
                     ),
-                    const SizedBox(height: 2),
-                    TextWidget(
-                      text: '$shopCount coffee shops',
-                      fontSize: 13,
-                      color: Colors.white70,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              TextWidget(
-                text: 'Shared by $sharedBy',
-                fontSize: 12,
-                color: Colors.white54,
-              ),
-              TextWidget(
-                text:
-                    sharedAt != null ? _formatTimestamp(sharedAt) : 'Recently',
-                fontSize: 12,
-                color: Colors.white54,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(
-                  context,
-                  '/sharedCollection',
-                  arguments: {
-                    'collectionId': collectionId,
-                    'title': title,
-                  },
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-              child: TextWidget(
-                text: 'View Collection',
-                fontSize: 14,
-                color: Colors.white,
-                isBold: true,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            // Collection info
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: primary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.collections_bookmark,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextWidget(
+                          text: '$shopCount coffee shops',
+                          fontSize: 14,
+                          color: Colors.white70,
+                        ),
+                        TextWidget(
+                          text: sharedAt != null
+                              ? _formatTimestamp(sharedAt)
+                              : 'Recently',
+                          fontSize: 13,
+                          color: Colors.white54,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // View button
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(
+                      context,
+                      '/sharedCollection',
+                      arguments: {
+                        'collectionId': collectionId,
+                        'title': title,
+                      },
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: TextWidget(
+                    text: 'View Full Collection',
+                    fontSize: 16,
+                    color: Colors.white,
+                    isBold: true,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

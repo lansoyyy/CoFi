@@ -65,9 +65,26 @@ class ListBottomSheet extends StatelessWidget {
                   children: [
                     // Add share button for user-created lists
                     if (listId != null && userId != null)
-                      IconButton(
-                        icon: const Icon(Icons.share, color: Colors.white),
-                        onPressed: () => _shareCollection(context),
+                      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: FirebaseFirestore.instance
+                            .collection('sharedCollections')
+                            .where('userId', isEqualTo: userId)
+                            .where('listId', isEqualTo: listId)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          final isAlreadyShared = snapshot.hasData &&
+                              (snapshot.data?.docs.isNotEmpty ?? false);
+
+                          if (isAlreadyShared) {
+                            // Don't show share button if already shared
+                            return const SizedBox.shrink();
+                          }
+
+                          return IconButton(
+                            icon: const Icon(Icons.share, color: Colors.white),
+                            onPressed: () => _showShareConfirmation(context),
+                          );
+                        },
                       ),
                     IconButton(
                       icon: const Icon(Icons.close, color: Colors.white),
@@ -448,6 +465,91 @@ class ListBottomSheet extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _showShareConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[800],
+          title: TextWidget(
+            text: 'Share Collection',
+            fontSize: 18,
+            color: Colors.white,
+            isBold: true,
+          ),
+          content: TextWidget(
+            text:
+                'Are you sure you want to share your collection "$title" with others?',
+            fontSize: 16,
+            color: Colors.white70,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: TextWidget(
+                text: 'Cancel',
+                fontSize: 14,
+                color: Colors.grey[400],
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _checkAndShareCollection(context);
+              },
+              child: TextWidget(
+                text: 'Share',
+                fontSize: 14,
+                color: Colors.blue,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _checkAndShareCollection(BuildContext context) async {
+    if (listId == null || userId == null) return;
+
+    try {
+      // Check if this collection has already been shared by this user
+      final existingShareQuery = await FirebaseFirestore.instance
+          .collection('sharedCollections')
+          .where('userId', isEqualTo: userId)
+          .where('listId', isEqualTo: listId)
+          .get();
+
+      if (existingShareQuery.docs.isNotEmpty) {
+        // Collection already shared
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('You have already shared this collection'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Proceed with sharing
+      _shareCollection(context);
+    } catch (e) {
+      if (kDebugMode) print('Error checking shared collection: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to share collection'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _shareCollection(BuildContext context) async {

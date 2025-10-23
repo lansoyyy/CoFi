@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../widgets/text_widget.dart';
+import '../job_chat_screen.dart';
 
 class ProfileTab extends StatelessWidget {
   final VoidCallback? onOpenExplore;
@@ -1034,81 +1035,143 @@ class ProfileTab extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[800],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          TextWidget(
-                            text: data['title'] ?? 'Unknown Position',
-                            fontSize: 16,
-                            color: Colors.white,
-                            isBold: true,
-                          ),
-                          const SizedBox(height: 4),
-                          TextWidget(
-                            text: data['address'] ?? 'Unknown Location',
-                            fontSize: 14,
-                            color: Colors.white70,
-                          ),
-                          const SizedBox(height: 8),
-                          ...userApplications.map((app) {
-                            final appData = app as Map<String, dynamic>;
-                            final status =
-                                appData['status'] as String? ?? 'pending';
-                            final appliedAt =
-                                appData['appliedAt'] as Timestamp?;
-                            final dateStr = appliedAt != null
-                                ? '${appliedAt.toDate().day}/${appliedAt.toDate().month}/${appliedAt.toDate().year}'
-                                : 'Unknown date';
+                    GestureDetector(
+                      onTap: () {
+                        final currentUser = FirebaseAuth.instance.currentUser;
+                        if (currentUser == null) return;
 
-                            Color statusColor = Colors.orange;
-                            String statusText = 'Pending';
+                        // Find the application data for the current user
+                        final userApplication = userApplications.firstWhere(
+                          (app) => app['applicantId'] == currentUser.uid,
+                          orElse: () => null,
+                        );
 
-                            if (status == 'accepted') {
-                              statusColor = Colors.green;
-                              statusText = 'Accepted';
-                            } else if (status == 'rejected') {
-                              statusColor = Colors.red;
-                              statusText = 'Rejected';
+                        if (userApplication != null) {
+                          FirebaseFirestore.instance
+                              .collection('shops')
+                              .doc(data['shopId'])
+                              .get()
+                              .then((DocumentSnapshot documentSnapshot) {
+                            if (documentSnapshot.exists) {
+                              Navigator.of(ctx).pop();
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => JobChatScreen(
+                                    jobId: doc.id,
+                                    jobTitle:
+                                        data['title'] ?? 'Unknown Position',
+                                    shopId: data['shopId'] ?? '',
+                                    posterId:
+                                        documentSnapshot['posterId'] ?? '',
+                                    applicantId: currentUser.uid,
+                                    applicationId: userApplication['id'] ?? '',
+                                  ),
+                                ),
+                              );
                             }
+                          });
+                        }
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[800],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.blue.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextWidget(
+                                    text: data['title'] ?? 'Unknown Position',
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                    isBold: true,
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.chat,
+                                  color: primary,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            TextWidget(
+                              text: data['address'] ?? 'Unknown Location',
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
+                            const SizedBox(height: 8),
+                            ...userApplications.map((app) {
+                              final appData = app as Map<String, dynamic>;
+                              final status =
+                                  appData['status'] as String? ?? 'pending';
+                              final appliedAt =
+                                  appData['appliedAt'] as Timestamp?;
+                              final dateStr = appliedAt != null
+                                  ? '${appliedAt.toDate().day}/${appliedAt.toDate().month}/${appliedAt.toDate().year}'
+                                  : 'Unknown date';
 
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: statusColor.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      statusText,
-                                      style: TextStyle(
-                                        color: statusColor,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
+                              Color statusColor = Colors.orange;
+                              String statusText = 'Pending';
+
+                              if (status == 'accepted') {
+                                statusColor = Colors.green;
+                                statusText = 'Accepted';
+                              } else if (status == 'rejected') {
+                                statusColor = Colors.red;
+                                statusText = 'Rejected';
+                              }
+
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        statusText,
+                                        style: TextStyle(
+                                          color: statusColor,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  TextWidget(
-                                    text: 'Applied on $dateStr',
-                                    fontSize: 12,
-                                    color: Colors.white60,
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ],
+                                    const SizedBox(width: 8),
+                                    TextWidget(
+                                      text: 'Applied on $dateStr',
+                                      fontSize: 12,
+                                      color: Colors.white60,
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            const SizedBox(height: 4),
+                            TextWidget(
+                              text: 'Tap to chat with employer',
+                              fontSize: 12,
+                              color: primary,
+                              align: TextAlign.center,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),

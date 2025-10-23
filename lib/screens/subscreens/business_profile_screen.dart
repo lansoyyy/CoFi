@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 import '../../widgets/post_event_bottom_sheet.dart';
+import '../../screens/job_chat_screen.dart';
 import 'reviews_screen.dart';
 
 class BusinessProfileScreen extends StatelessWidget {
@@ -921,6 +922,38 @@ class _JobApplicationsBottomSheetState
             ],
           ),
 
+          const SizedBox(height: 8),
+
+          // Chat button
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _openChat(application, jobId),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.chat, size: 16, color: Colors.white),
+                      const SizedBox(width: 4),
+                      TextWidget(
+                        text: 'Chat with Applicant',
+                        fontSize: 12,
+                        color: Colors.white,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
           // Applied date
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -962,5 +995,36 @@ class _JobApplicationsBottomSheetState
         );
       }
     }
+  }
+
+  Future<void> _openChat(Map<String, dynamic> application, String jobId) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    // Get job details
+    final jobDoc = await FirebaseFirestore.instance
+        .collection('shops')
+        .doc(widget.shopId)
+        .collection('jobs')
+        .doc(jobId)
+        .get();
+
+    final jobData = jobDoc.data() as Map<String, dynamic>?;
+    final jobTitle = jobData?['title'] ?? 'Unknown Position';
+
+    Navigator.pop(context);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => JobChatScreen(
+          jobId: jobId,
+          jobTitle: jobTitle,
+          shopId: widget.shopId,
+          posterId: currentUser.uid,
+          applicantId: application['applicantId'] ?? '',
+          applicationId: application['id'] ?? '',
+        ),
+      ),
+    );
   }
 }

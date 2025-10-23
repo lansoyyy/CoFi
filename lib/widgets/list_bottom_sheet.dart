@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../widgets/text_widget.dart';
+import '../screens/subscreens/cafe_details_screen.dart';
 
 class ListBottomSheet extends StatelessWidget {
   final String title;
@@ -144,8 +145,11 @@ class ListBottomSheet extends StatelessWidget {
                             final data = shops[index];
                             final shopName =
                                 (data['name'] as String?) ?? 'Cafe';
+                            print(data['id']);
                             return _buildCafeItem(
-                                name: shopName, logo: data['logoUrl']);
+                                name: shopName,
+                                logo: data['logoUrl'],
+                                shopId: data['id']);
                           },
                         ),
                       ),
@@ -216,7 +220,9 @@ class ListBottomSheet extends StatelessWidget {
                                 final shopName =
                                     (data['name'] as String?) ?? 'Cafe';
                                 return _buildCafeItem(
-                                    name: shopName, logo: data['logoUrl']);
+                                    name: shopName,
+                                    logo: data['logoUrl'],
+                                    shopId: shop.id);
                               },
                             ),
                           ),
@@ -307,13 +313,17 @@ class ListBottomSheet extends StatelessWidget {
                                   builder: (context, shopSnap) {
                                     if (shopSnap.hasError) {
                                       return _buildCafeItem(
-                                          name: 'Cafe', logo: '');
+                                          name: 'Cafe',
+                                          logo: '',
+                                          shopId: shopId);
                                     }
 
                                     if (!shopSnap.hasData ||
                                         !shopSnap.data!.exists) {
                                       return _buildCafeItem(
-                                          name: 'Cafe', logo: '');
+                                          name: 'Cafe',
+                                          logo: '',
+                                          shopId: shopId);
                                     }
 
                                     final shopData = shopSnap.data!.data();
@@ -323,7 +333,9 @@ class ListBottomSheet extends StatelessWidget {
                                     final logoUrl =
                                         (shopData?['logoUrl'] as String?) ?? '';
                                     return _buildCafeItem(
-                                        name: shopName, logo: logoUrl);
+                                        name: shopName,
+                                        logo: logoUrl,
+                                        shopId: shopId);
                                   },
                                 );
                               },
@@ -395,7 +407,7 @@ class ListBottomSheet extends StatelessWidget {
                                 builder: (context, shopSnap) {
                                   if (shopSnap.hasError) {
                                     return _buildCafeItem(
-                                        name: 'Cafe', logo: '');
+                                        name: 'Cafe', logo: '', shopId: shopId);
                                   }
 
                                   if (!shopSnap.hasData ||
@@ -409,7 +421,9 @@ class ListBottomSheet extends StatelessWidget {
                                   final logoUrl =
                                       (shopData?['logoUrl'] as String?) ?? '';
                                   return _buildCafeItem(
-                                      name: shopName, logo: logoUrl);
+                                      name: shopName,
+                                      logo: logoUrl,
+                                      shopId: shopId);
                                 },
                               );
                             },
@@ -430,40 +444,67 @@ class ListBottomSheet extends StatelessWidget {
   Widget _buildCafeItem({
     required String name,
     required String logo,
+    String? shopId,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: Colors.grey[800],
-              image: logo.isNotEmpty
-                  ? DecorationImage(
-                      image: NetworkImage(logo),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
+    return Builder(
+      builder: (context) {
+        return GestureDetector(
+          onTap: () {
+            if (shopId != null && shopId.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CafeDetailsScreen(
+                    shopId: shopId!,
+                    shop: {'name': name, 'logoUrl': logo},
+                  ),
+                ),
+              );
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey[800],
+                    image: logo.isNotEmpty
+                        ? DecorationImage(
+                            image: NetworkImage(logo),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: logo.isEmpty
+                      ? const Icon(
+                          Icons.local_cafe,
+                          color: Colors.white70,
+                          size: 24,
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextWidget(
+                    text: name,
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.white54,
+                  size: 16,
+                ),
+              ],
             ),
-            child: logo.isEmpty
-                ? const Icon(
-                    Icons.local_cafe,
-                    color: Colors.white70,
-                    size: 24,
-                  )
-                : null,
           ),
-          const SizedBox(width: 16),
-          TextWidget(
-            text: name,
-            fontSize: 16,
-            color: Colors.white,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

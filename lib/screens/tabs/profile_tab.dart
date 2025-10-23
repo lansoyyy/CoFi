@@ -1,3 +1,4 @@
+import 'package:cofi/screens/auth/login_screen.dart';
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -40,12 +41,9 @@ class ProfileTab extends StatelessWidget {
                   ),
                   Row(
                     children: [
-                      PopupMenuButton<int>(
-                        icon: const Icon(Icons.more_vert,
-                            color: Colors.white, size: 26),
-                        onSelected: (value) async {
-                          if (value == 0) {
-                            final shouldLogout = await showDialog<bool>(
+                      IconButton(
+                          onPressed: () {
+                            showDialog(
                               context: context,
                               builder: (ctx) => AlertDialog(
                                 backgroundColor: Colors.grey[900],
@@ -64,8 +62,28 @@ class ProfileTab extends StatelessWidget {
                                     child: const Text('Cancel'),
                                   ),
                                   TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(true),
+                                    onPressed: () async {
+                                      try {
+                                        await FirebaseAuth.instance.signOut();
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const LoginScreen(),
+                                          ),
+                                        );
+                                        // AuthGate will navigate to LandingScreen automatically
+                                      } catch (e) {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                                content:
+                                                    Text('Logout failed: $e')),
+                                          );
+                                        }
+                                      }
+                                    },
                                     style: TextButton.styleFrom(
                                       foregroundColor: Colors.redAccent,
                                     ),
@@ -74,33 +92,11 @@ class ProfileTab extends StatelessWidget {
                                 ],
                               ),
                             );
-                            if (shouldLogout == true) {
-                              try {
-                                await FirebaseAuth.instance.signOut();
-                                // AuthGate will navigate to LandingScreen automatically
-                              } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text('Logout failed: $e')),
-                                  );
-                                }
-                              }
-                            }
-                          }
-                        },
-                        itemBuilder: (context) {
-                          return [
-                            PopupMenuItem<int>(
-                              value: 0,
-                              child: TextWidget(
-                                text: 'Logout',
-                                fontSize: 16,
-                              ),
-                            )
-                          ];
-                        },
-                      )
+                          },
+                          icon: Icon(
+                            Icons.logout,
+                            color: Colors.white,
+                          )),
                     ],
                   ),
                 ],
@@ -176,80 +172,32 @@ class ProfileTab extends StatelessWidget {
               }),
             ),
             const SizedBox(height: 32),
-            // Stats Card
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[900],
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextWidget(
-                      text: '2025 Stats',
-                      fontSize: 20,
-                      color: Colors.white,
-                      isBold: true,
-                    ),
-                    const SizedBox(height: 18),
-                    Builder(builder: (context) {
-                      final now = DateTime.now();
-                      final startOfToday =
-                          DateTime(now.year, now.month, now.day);
-                      final startOfWeek = startOfToday.subtract(
-                          Duration(days: startOfToday.weekday - 1)); // Monday
-                      final startOfMonth = DateTime(now.year, now.month, 1);
-                      final startOfYear = DateTime(now.year, 1, 1);
+            // Stats Card - Different for Business vs User accounts
+            Builder(
+              builder: (context) {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user == null) return const SizedBox.shrink();
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildStatRowStream(
-                            _streamVisitCount(start: startOfWeek, end: now),
-                            'Shops Visited',
-                            'This week',
-                            onTap: () {
-                              Navigator.pushNamed(context, '/visitedCafes');
-                            },
-                          ),
-                          const Divider(color: Colors.white24, thickness: 1),
-                          _buildStatRowStream(
-                            _streamVisitCount(start: startOfMonth, end: now),
-                            'Shops Visited',
-                            'This month',
-                            onTap: () {
-                              Navigator.pushNamed(context, '/visitedCafes');
-                            },
-                          ),
-                          const Divider(color: Colors.white24, thickness: 1),
-                          _buildStatRowStream(
-                            _streamVisitCount(start: startOfYear, end: now),
-                            'Shops Visited',
-                            'This year',
-                            underline: true,
-                            onTap: () {
-                              Navigator.pushNamed(context, '/visitedCafes');
-                            },
-                          ),
-                          const Divider(color: Colors.white24, thickness: 1),
-                          _buildStatRowStream(
-                            _streamReviewCount(start: startOfYear, end: now),
-                            'Shops Reviewed',
-                            '',
-                            onTap: () {
-                              Navigator.pushNamed(context, '/yourReviews');
-                            },
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
-                ),
-              ),
+                return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .snapshots(),
+                  builder: (context, userSnapshot) {
+                    final userData = userSnapshot.data?.data();
+                    final accountType =
+                        userData?['accountType'] as String? ?? 'user';
+
+                    // Business Account - Show Analytics & Stats
+                    if (accountType == 'business') {
+                      return _buildBusinessAnalyticsSection(context, user.uid);
+                    }
+
+                    // User Account - Show regular stats
+                    return _buildUserStatsSection(context, user.uid);
+                  },
+                );
+              },
             ),
             const SizedBox(height: 32),
             // Contribute to Community or Business Dashboard based on account type
@@ -440,6 +388,286 @@ class ProfileTab extends StatelessWidget {
       }
       return uniqueShopIds.length;
     });
+  }
+
+  // Business Analytics Section for business users
+  Widget _buildBusinessAnalyticsSection(BuildContext context, String uid) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('shops')
+            .where('posterId', isEqualTo: uid)
+            .limit(1)
+            .snapshots(),
+        builder: (context, shopSnapshot) {
+          if (!shopSnapshot.hasData || shopSnapshot.data!.docs.isEmpty) {
+            // No shop yet, show empty state
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(24),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextWidget(
+                    text: 'Business Analytics',
+                    fontSize: 20,
+                    color: Colors.white,
+                    isBold: true,
+                  ),
+                  const SizedBox(height: 18),
+                  Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.business,
+                          size: 48,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(height: 12),
+                        TextWidget(
+                          text: 'No shop data available',
+                          fontSize: 16,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 8),
+                        TextWidget(
+                          text: 'Submit or claim a shop to see analytics',
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                          align: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final shopDoc = shopSnapshot.data!.docs.first;
+          final shopId = shopDoc.id;
+
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: BorderRadius.circular(24),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextWidget(
+                  text: 'Business Analytics',
+                  fontSize: 20,
+                  color: Colors.white,
+                  isBold: true,
+                ),
+                const SizedBox(height: 20),
+
+                // Stats Grid
+                StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
+                      .collection('shops')
+                      .doc(shopId)
+                      .snapshots(),
+                  builder: (context, shopDataSnapshot) {
+                    final shopData = shopDataSnapshot.data?.data();
+                    final ratings =
+                        (shopData?['ratings'] as num?)?.toDouble() ?? 0.0;
+                    final ratingCount = shopData?['ratingCount'] as int? ?? 0;
+
+                    return Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildStatItem(
+                                icon: Icons.star,
+                                label: 'Rating',
+                                value: ratings > 0
+                                    ? ratings.toStringAsFixed(1)
+                                    : '0.0',
+                                color: Colors.amber,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildStatItem(
+                                icon: Icons.rate_review,
+                                label: 'Total Ratings',
+                                value: ratingCount.toString(),
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: StreamBuilder<QuerySnapshot>(
+                                stream: FirebaseFirestore.instance
+                                    .collection('shops')
+                                    .doc(shopId)
+                                    .collection('visits')
+                                    .snapshots(),
+                                builder: (context, visitSnapshot) {
+                                  final visitCount =
+                                      visitSnapshot.data?.docs.length ?? 0;
+                                  return _buildStatItem(
+                                    icon: Icons.people,
+                                    label: 'Customer Visits',
+                                    value: visitCount.toString(),
+                                    color: Colors.green,
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: FutureBuilder<QuerySnapshot>(
+                                future: FirebaseFirestore.instance
+                                    .collection('users')
+                                    .where('bookmarks', arrayContains: shopId)
+                                    .get(),
+                                builder: (context, bookmarkSnapshot) {
+                                  final savedCount =
+                                      bookmarkSnapshot.data?.docs.length ?? 0;
+                                  return _buildStatItem(
+                                    icon: Icons.bookmark,
+                                    label: 'Saved',
+                                    value: savedCount.toString(),
+                                    color: primary,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // User Stats Section for regular users
+  Widget _buildUserStatsSection(BuildContext context, String uid) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          borderRadius: BorderRadius.circular(24),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextWidget(
+              text: '2025 Stats',
+              fontSize: 20,
+              color: Colors.white,
+              isBold: true,
+            ),
+            const SizedBox(height: 18),
+            Builder(builder: (context) {
+              final now = DateTime.now();
+              final startOfToday = DateTime(now.year, now.month, now.day);
+              final startOfWeek = startOfToday
+                  .subtract(Duration(days: startOfToday.weekday - 1)); // Monday
+              final startOfMonth = DateTime(now.year, now.month, 1);
+              final startOfYear = DateTime(now.year, 1, 1);
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildStatRowStream(
+                    _streamVisitCount(start: startOfWeek, end: now),
+                    'Shops Visited',
+                    'This week',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/visitedCafes');
+                    },
+                  ),
+                  const Divider(color: Colors.white24, thickness: 1),
+                  _buildStatRowStream(
+                    _streamVisitCount(start: startOfMonth, end: now),
+                    'Shops Visited',
+                    'This month',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/visitedCafes');
+                    },
+                  ),
+                  const Divider(color: Colors.white24, thickness: 1),
+                  _buildStatRowStream(
+                    _streamVisitCount(start: startOfYear, end: now),
+                    'Shops Visited',
+                    'This year',
+                    underline: true,
+                    onTap: () {
+                      Navigator.pushNamed(context, '/visitedCafes');
+                    },
+                  ),
+                  const Divider(color: Colors.white24, thickness: 1),
+                  _buildStatRowStream(
+                    _streamReviewCount(start: startOfYear, end: now),
+                    'Shops Reviewed',
+                    '',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/yourReviews');
+                    },
+                  ),
+                ],
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[850],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 8),
+          TextWidget(
+            text: value,
+            fontSize: 24,
+            color: Colors.white,
+            isBold: true,
+          ),
+          const SizedBox(height: 4),
+          TextWidget(
+            text: label,
+            fontSize: 12,
+            color: Colors.grey[400]!,
+            align: TextAlign.center,
+          ),
+        ],
+      ),
+    );
   }
 
   // Builds a stat row that listens to a count stream and renders it.

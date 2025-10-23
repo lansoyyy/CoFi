@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../utils/colors.dart';
 import '../widgets/text_widget.dart';
 import '../widgets/list_bottom_sheet.dart';
+import '../screens/subscreens/cafe_details_screen.dart';
 
 class SharedCollectionScreen extends StatefulWidget {
   const SharedCollectionScreen({super.key});
@@ -83,7 +84,12 @@ class _SharedCollectionScreenState extends State<SharedCollectionScreen> {
             .where('isVerified', isEqualTo: true)
             .where('tags', arrayContainsAny: tags);
         final res = await shopsQuery.get();
-        shopsList = res.docs.map((d) => d.data()).toList();
+        shopsList = res.docs.map((d) {
+          final data = d.data();
+          // Make sure we add the document ID
+          data['id'] = d.id;
+          return data;
+        }).toList();
       } else {
         // Item-based collection
         final itemsRes = await FirebaseFirestore.instance
@@ -111,7 +117,12 @@ class _SharedCollectionScreenState extends State<SharedCollectionScreen> {
                 .where('isVerified', isEqualTo: true)
                 .where(FieldPath.documentId, whereIn: batch)
                 .get();
-            shopsList.addAll(snap.docs.map((e) => e.data()));
+            shopsList.addAll(snap.docs.map((e) {
+              final data = e.data();
+              // Make sure we add the document ID
+              data['id'] = e.id;
+              return data;
+            }));
           }
         }
       }
@@ -292,7 +303,9 @@ class _SharedCollectionScreenState extends State<SharedCollectionScreen> {
                   itemBuilder: (context, index) {
                     final shop = _shopsList![index];
                     final shopName = (shop['name'] as String?) ?? 'Cafe';
-                    return _buildShopItem(shopName, shop['logoUrl'] ?? '');
+                    final shopId = shop['id'] as String?;
+                    return _buildShopItem(
+                        shopName, shop['logoUrl'] ?? '', shopId);
                   },
                 ),
         ),
@@ -300,41 +313,61 @@ class _SharedCollectionScreenState extends State<SharedCollectionScreen> {
     );
   }
 
-  Widget _buildShopItem(String name, String logoUrl) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: Colors.grey[800],
-              image: logoUrl.isNotEmpty
-                  ? DecorationImage(
-                      image: NetworkImage(logoUrl),
-                      fit: BoxFit.cover,
+  Widget _buildShopItem(String name, String logoUrl, String? shopId) {
+    return GestureDetector(
+      onTap: () {
+        if (shopId != null && shopId.isNotEmpty) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CafeDetailsScreen(
+                shopId: shopId!,
+                shop: {'name': name, 'logoUrl': logoUrl},
+              ),
+            ),
+          );
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.grey[800],
+                image: logoUrl.isNotEmpty
+                    ? DecorationImage(
+                        image: NetworkImage(logoUrl),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: logoUrl.isEmpty
+                  ? const Icon(
+                      Icons.local_cafe,
+                      color: Colors.white70,
+                      size: 24,
                     )
                   : null,
             ),
-            child: logoUrl.isEmpty
-                ? const Icon(
-                    Icons.local_cafe,
-                    color: Colors.white70,
-                    size: 24,
-                  )
-                : null,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: TextWidget(
-              text: name,
-              fontSize: 16,
-              color: Colors.white,
+            const SizedBox(width: 16),
+            Expanded(
+              child: TextWidget(
+                text: name,
+                fontSize: 16,
+                color: Colors.white,
+              ),
             ),
-          ),
-        ],
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.white54,
+              size: 16,
+            ),
+          ],
+        ),
       ),
     );
   }

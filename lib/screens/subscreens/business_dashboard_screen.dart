@@ -72,8 +72,7 @@ class BusinessDashboardScreen extends StatelessWidget {
                 context: context,
                 icon: Icons.add_business,
                 title: 'Submit New Shop',
-                description:
-                    'Add your cafe to CoFi and start managing it',
+                description: 'Add your cafe to CoFi and start managing it',
                 color: primary,
                 onTap: () {
                   Navigator.pushNamed(context, '/submitShop');
@@ -198,14 +197,14 @@ class _ClaimShopScreenState extends State<ClaimShopScreen> {
             final name = (data['name'] as String?)?.toLowerCase() ?? '';
             final address = (data['address'] as String?)?.toLowerCase() ?? '';
             final searchLower = query.toLowerCase();
-            
-            // Only show shops without a posterId (unclaimed)
-            final posterId = data['posterId'] as String?;
-            return (name.contains(searchLower) || address.contains(searchLower)) &&
-                   (posterId == null || posterId.isEmpty);
+
+            return (name.contains(searchLower) ||
+                address.contains(searchLower));
           })
           .map((doc) => {'id': doc.id, ...doc.data()})
           .toList();
+
+      print(results.length);
 
       setState(() {
         _searchResults = results;
@@ -254,10 +253,7 @@ class _ClaimShopScreenState extends State<ClaimShopScreen> {
 
     try {
       // Update shop with posterId
-      await FirebaseFirestore.instance
-          .collection('shops')
-          .doc(shopId)
-          .update({
+      await FirebaseFirestore.instance.collection('shops').doc(shopId).update({
         'posterId': user.uid,
         'postedBy': {
           'uid': user.uid,
@@ -348,7 +344,8 @@ class _ClaimShopScreenState extends State<ClaimShopScreen> {
                       : ListView.separated(
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           itemCount: _searchResults.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 16),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 16),
                           itemBuilder: (context, index) {
                             final shop = _searchResults[index];
                             final name = shop['name'] as String? ?? 'Unknown';

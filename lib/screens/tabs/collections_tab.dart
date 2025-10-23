@@ -268,10 +268,13 @@ class _CollectionsTabState extends State<CollectionsTab> {
                                         color: Colors.white, size: 28),
                                     onTap: () async {
                                       try {
-                                        final res = await shopsQuery.get();
-                                        final shopsList = res.docs
-                                            .map((d) => d.data())
+                                        final shopsList = shopSnap.data?.docs
+                                            .map((d) => {
+                                                  ...d.data(),
+                                                  'id': d.id,
+                                                })
                                             .toList();
+
                                         if (!mounted) return;
                                         ListBottomSheet.show(
                                           context,
@@ -366,8 +369,10 @@ class _CollectionsTabState extends State<CollectionsTab> {
                                             .where(FieldPath.documentId,
                                                 whereIn: batch)
                                             .get();
-                                        shopsList.addAll(
-                                            snap.docs.map((e) => e.data()));
+                                        shopsList.addAll(snap.docs.map((e) => {
+                                              ...e.data(),
+                                              'id': e.id,
+                                            }));
                                       }
                                       if (!mounted) return;
                                       ListBottomSheet.show(

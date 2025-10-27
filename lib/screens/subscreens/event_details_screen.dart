@@ -71,7 +71,7 @@ class EventDetailsScreen extends StatelessWidget {
                       children: [
                         // Date Section
                         TextWidget(
-                          text: 'Date',
+                          text: 'Start Date',
                           fontSize: 16,
                           color: Colors.white,
                           isBold: true,
@@ -83,7 +83,19 @@ class EventDetailsScreen extends StatelessWidget {
                           color: Colors.white70,
                         ),
                         const SizedBox(height: 24),
-
+ TextWidget(
+                          text: 'End Date',
+                          fontSize: 16,
+                          color: Colors.white,
+                          isBold: true,
+                        ),
+                        const SizedBox(height: 8),
+                        TextWidget(
+                          text: _formatEventDate1(e),
+                          fontSize: 14,
+                          color: Colors.white70,
+                        ),
+                        const SizedBox(height: 24),
                         // Address Section
                         TextWidget(
                           text: 'Address',
@@ -193,6 +205,27 @@ class EventDetailsScreen extends StatelessWidget {
       dt = DateTime.tryParse(d);
     }
     final sd = e['startDate'];
+    if (dt == null) {
+      if (sd is Timestamp) dt = sd.toDate();
+      if (sd is String && sd.isNotEmpty) dt = DateTime.tryParse(sd);
+    }
+    if (dt == null) return 'Date not set';
+    final day = dt.day.toString().padLeft(2, '0');
+    final mon = dt.month.toString().padLeft(2, '0');
+    final yr = dt.year.toString();
+    return '$yr-$mon-$day';
+  }
+
+
+    String _formatEventDate1(Map<String, dynamic> e) {
+    // Try 'date' first, then 'startDate'. Accept String or Timestamp.
+    DateTime? dt;
+    final d = e['date'];
+    if (d is Timestamp) dt = d.toDate();
+    if (d is String && d.isNotEmpty) {
+      dt = DateTime.tryParse(d);
+    }
+    final sd = e['endDate'];
     if (dt == null) {
       if (sd is Timestamp) dt = sd.toDate();
       if (sd is String && sd.isNotEmpty) dt = DateTime.tryParse(sd);

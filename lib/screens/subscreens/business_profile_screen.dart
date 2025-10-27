@@ -115,9 +115,13 @@ class BusinessProfileScreen extends StatelessWidget {
 
                 // Grid of sections
                 Column(
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     // First row
                     Row(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Expanded(
                           child: GestureDetector(
@@ -189,6 +193,8 @@ class BusinessProfileScreen extends StatelessWidget {
 
                     // Second row
                     Row(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Expanded(
                           child: GestureDetector(
@@ -239,6 +245,8 @@ class BusinessProfileScreen extends StatelessWidget {
 
                     // Third row
                     Row(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Expanded(
                           child: GestureDetector(
@@ -511,7 +519,14 @@ class BusinessProfileScreen extends StatelessWidget {
               final shopData = shopSnapshot.data?.data();
               final ratings = (shopData?['ratings'] as num?)?.toDouble() ?? 0.0;
               final ratingCount = shopData?['ratingCount'] as int? ?? 0;
+      double ratingsNew = 0;
+                  
 
+
+                    for(int i =0; i < shopData?['reviews'].length; i++) {
+                      ratingsNew+= shopData?['reviews'][i]['rating'];
+                      
+                    }
               return Column(
                 children: [
                   Row(
@@ -521,7 +536,7 @@ class BusinessProfileScreen extends StatelessWidget {
                           icon: Icons.star,
                           label: 'Rating',
                           value:
-                              ratings > 0 ? ratings.toStringAsFixed(1) : '0.0',
+                              ratingsNew > 0 ? ratingsNew.toStringAsFixed(1) : '0.0',
                           color: Colors.amber,
                         ),
                       ),
@@ -530,7 +545,7 @@ class BusinessProfileScreen extends StatelessWidget {
                         child: _buildStatItem(
                           icon: Icons.rate_review,
                           label: 'Total Ratings',
-                          value: ratingCount.toString(),
+                       value: (ratingsNew / shopData?['reviews'].length).toString(),
                           color: Colors.blue,
                         ),
                       ),
@@ -538,6 +553,7 @@ class BusinessProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Row(
+                   
                     children: [
                       Expanded(
                         child: StreamBuilder<QuerySnapshot>(

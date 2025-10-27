@@ -1,8 +1,8 @@
 import 'package:cofi/widgets/post_event_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../utils/colors.dart';
 import '../widgets/text_widget.dart';
+import '../screens/subscreens/event_details_screen.dart';
 
 class MyEventsBottomSheet extends StatelessWidget {
   const MyEventsBottomSheet({super.key, required this.shopId});
@@ -123,14 +123,20 @@ class MyEventsBottomSheet extends StatelessWidget {
                                 ? Colors.red
                                 : Colors.orange;
                         return _buildEventItem(
+                          context: context,
+                          image:data['imageUrl'] ,
+                          about: data['about'],
                           title: title,
                           status: status == 'pending'
-                              ? 'Pending for approval'
+                              ? ''
                               : status[0].toUpperCase() + status.substring(1),
                           statusColor: statusColor,
                           participants: participants > 0
                               ? '$participants Participants'
                               : null,
+                          eventData: data,
+                          eventId: docs[index].id,
+                          shopId: shopId,
                         );
                       },
                     );
@@ -145,75 +151,83 @@ class MyEventsBottomSheet extends StatelessWidget {
   }
 
   Widget _buildEventItem({
+    required BuildContext context,
     required String title,
+        required String about,
     required String status,
+    required String image,
     required Color statusColor,
     String? participants,
+    required Map<String, dynamic> eventData,
+    required String eventId,
+    required String shopId,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          // Event Icon
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: primary,
-              borderRadius: BorderRadius.circular(8),
+    return GestureDetector(
+      onTap: () {
+        // Add shopId and id to the event data
+        final completeEventData = Map<String, dynamic>.from(eventData);
+        completeEventData['shopId'] = shopId;
+        completeEventData['id'] = eventId;
+        
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EventDetailsScreen(event: completeEventData),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            // Event Icon
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(7.5),
+                image: DecorationImage(image: NetworkImage(image),
+                fit: BoxFit.cover),
+              )
             ),
-            child: Center(
-              child: Container(
-                width: 20,
-                height: 20,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.local_cafe,
-                  color: Colors.red,
-                  size: 12,
-                ),
+
+            const SizedBox(width: 16),
+
+            // Event Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextWidget(
+                    text: title,
+                    fontSize: 16,
+                    color: Colors.white,
+                    isBold: true,
+                  ),
+                    TextWidget(
+                    text: about,
+                    fontSize: 12,
+                    color: Colors.white,
+                   
+                  ),
+               
+                  if (participants != null) ...[
+                    const SizedBox(height: 4),
+                    TextWidget(
+                      text: participants,
+                      fontSize: 14,
+                      color: Colors.grey[400]!,
+                    ),
+                  ],
+                ],
               ),
             ),
-          ),
-
-          const SizedBox(width: 16),
-
-          // Event Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextWidget(
-                  text: title,
-                  fontSize: 16,
-                  color: Colors.white,
-                  isBold: true,
-                ),
-                const SizedBox(height: 4),
-                TextWidget(
-                  text: status,
-                  fontSize: 14,
-                  color: statusColor,
-                ),
-                if (participants != null) ...[
-                  const SizedBox(height: 4),
-                  TextWidget(
-                    text: participants,
-                    fontSize: 14,
-                    color: Colors.grey[400]!,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

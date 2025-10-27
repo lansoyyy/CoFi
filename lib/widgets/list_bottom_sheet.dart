@@ -76,10 +76,10 @@ class ListBottomSheet extends StatelessWidget {
                           final isAlreadyShared = snapshot.hasData &&
                               (snapshot.data?.docs.isNotEmpty ?? false);
 
-                          if (isAlreadyShared) {
-                            // Don't show share button if already shared
-                            return const SizedBox.shrink();
-                          }
+                          // if (isAlreadyShared) {
+                          //   // Don't show share button if already shared
+                          //   return const SizedBox.shrink();
+                          // }
 
                           return IconButton(
                             icon: const Icon(Icons.share, color: Colors.white),
@@ -567,14 +567,30 @@ class ListBottomSheet extends StatelessWidget {
 
       if (existingShareQuery.docs.isNotEmpty) {
         // Collection already shared
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('You have already shared this collection'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
+
+            // Generate shareable link
+      final shareableLink =
+          'https://cofi.app/shared-collection/${existingShareQuery.docs.first.id}';
+
+      // Create share content
+      final String shareText =
+          'Check out my coffee collection "$title" on Cofi!\n\n$shareableLink';
+
+      // Share the collection
+      await Share.share(
+        shareText,
+        subject: 'Coffee Collection: $title',
+      );
+        // if (context.mounted) {
+        //   ScaffoldMessenger.of(context).showSnackBar(
+        //     const SnackBar(
+        //       content: Text('You have already shared this collection'),
+        //       backgroundColor: Colors.orange,
+        //     ),
+        //   );
+        // }
+
+
         return;
       }
 

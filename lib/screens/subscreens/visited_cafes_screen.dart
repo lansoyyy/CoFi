@@ -106,10 +106,19 @@ class VisitedCafesScreen extends StatelessWidget {
                       stream: shopRef.snapshots(),
                       builder: (context, shopSnap) {
                         final shopName = (shopSnap.data?.data()?['name'] as String?) ?? 'Cafe';
-                        return _buildCafeCard(
-                          cafeName: shopName,
-                          cafeImage: '',
-                          backgroundColor: Colors.grey[700]!,
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              '/cafeDetails',
+                              arguments: {'shopId': entry.key},
+                            );
+                          },
+                          child: _buildCafeCard(
+                            cafeName: shopName,
+                            cafeImage: shopSnap.data?.data()?['logoUrl'],
+                            backgroundColor: Colors.grey[700]!,
+                          ),
                         );
                       },
                     );
@@ -143,32 +152,11 @@ class VisitedCafesScreen extends StatelessWidget {
             height: 72,
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
+              image: DecorationImage(image: NetworkImage(cafeImage,),),
               color: backgroundColor,
               shape: BoxShape.circle,
             ),
-            child: hasRedIcon
-                ? Center(
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.local_cafe,
-                        color: Colors.red,
-                        size: 16,
-                      ),
-                    ),
-                  )
-                : const Center(
-                    child: Icon(
-                      Icons.image,
-                      color: Colors.white54,
-                      size: 24,
-                    ),
-                  ),
+            
           ),
           // Cafe name section
           Expanded(

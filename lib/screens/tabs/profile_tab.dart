@@ -703,178 +703,192 @@ class ProfileTab extends StatelessWidget {
         final userData = userSnapshot.data?.data();
         final accountType = userData?['accountType'] as String? ?? 'user';
 
-        // For regular users, show job application section
+        // For regular users, show both job application and shop submission sections
         if (accountType == 'user') {
-          return _buildUserJobApplicationSection(context, uid);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Job Application Section
+              _buildUserJobApplicationSection(context, uid),
+              const SizedBox(height: 24),
+              // Shop Submission Section
+              _buildUserShopSubmissionSection(context, uid),
+            ],
+          );
         }
 
         // For other account types, show shop submission section
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: TextWidget(
-                text: 'Contribute to Community',
-                fontSize: 18,
-                color: Colors.white,
-                isBold: true,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('shops')
-                    .where('posterId', isEqualTo: uid)
-                    .limit(1)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  final hasShop =
-                      snapshot.hasData && snapshot.data!.docs.isNotEmpty;
-                  String label = hasShop ? 'View Submission' : 'Submit A Shop';
-                  String subtitle = '';
-                  IconData statusIcon = Icons.local_cafe;
-                  Color statusColor = primary;
+        return _buildUserShopSubmissionSection(context, uid);
+      },
+    );
+  }
 
-                  if (hasShop) {
-                    final doc = snapshot.data!.docs.first;
-                    final data = doc.data() as Map<String, dynamic>;
-                    final isVerified = data['isVerified'] ?? false;
+  // User Account: Show shop submission section
+  Widget _buildUserShopSubmissionSection(BuildContext context, String uid) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: TextWidget(
+            text: 'Contribute to Community',
+            fontSize: 18,
+            color: Colors.white,
+            isBold: true,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('shops')
+                .where('posterId', isEqualTo: uid)
+                .limit(1)
+                .snapshots(),
+            builder: (context, snapshot) {
+              final hasShop =
+                  snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+              String label = hasShop ? 'View Submission' : 'Submit A Shop';
+              String subtitle = '';
+              IconData statusIcon = Icons.local_cafe;
+              Color statusColor = primary;
 
-                    if (isVerified) {
-                      label = 'Submission Approved';
-                      subtitle = 'Your shop is live';
-                      statusIcon = Icons.check_circle;
-                      statusColor = Colors.green;
-                    } else {
-                      label = 'Submission Pending';
-                      subtitle = 'Your shop is under review';
-                      statusIcon = Icons.pending;
-                      statusColor = Colors.orange;
-                    }
-                  }
+              if (hasShop) {
+                final doc = snapshot.data!.docs.first;
+                final data = doc.data() as Map<String, dynamic>;
+                final isVerified = data['isVerified'] ?? false;
 
-                  void navigate() {
-                    if (hasShop) {
-                      final doc = snapshot.data!.docs.first;
-                      final data = doc.data() as Map<String, dynamic>;
-                      final isVerified = data['isVerified'] ?? false;
+                if (isVerified) {
+                  label = 'Submission Approved';
+                  subtitle = 'Your shop is live';
+                  statusIcon = Icons.check_circle;
+                  statusColor = Colors.green;
+                } else {
+                  label = 'Submission Pending';
+                  subtitle = 'Your shop is under review';
+                  statusIcon = Icons.pending;
+                  statusColor = Colors.orange;
+                }
+              }
 
-                      // User can only view submission status, not manage
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          backgroundColor: Colors.grey[900],
-                          title: Row(
-                            children: [
-                              Icon(statusIcon, color: statusColor, size: 28),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  label,
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                              ),
-                            ],
-                          ),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Shop Name: ${data['name'] ?? 'Unknown'}',
-                                style: const TextStyle(color: Colors.white70),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Status: ${isVerified ? 'Approved' : 'Pending Verification'}',
-                                style: TextStyle(color: statusColor),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                isVerified
-                                    ? 'Your shop is now visible to all users!'
-                                    : 'Your shop will be visible once approved by our team.',
-                                style: const TextStyle(
-                                    color: Colors.white60, fontSize: 14),
-                              ),
-                            ],
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(ctx).pop(),
-                              child: const Text('Close'),
-                            ),
-                          ],
-                        ),
-                      );
-                    } else {
-                      Navigator.pushNamed(context, '/submitShop');
-                    }
-                  }
+              void navigate() {
+                if (hasShop) {
+                  final doc = snapshot.data!.docs.first;
+                  final data = doc.data() as Map<String, dynamic>;
+                  final isVerified = data['isVerified'] ?? false;
 
-                  return GestureDetector(
-                    onTap: navigate,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(32),
-                      ),
-                      child: Row(
+                  // User can only view submission status, not manage
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: Colors.grey[900],
+                      title: Row(
                         children: [
-                          const SizedBox(width: 16),
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: statusColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Icon(statusIcon,
-                                    color: Colors.white, size: 28),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
+                          Icon(statusIcon, color: statusColor, size: 28),
+                          const SizedBox(width: 12),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                TextWidget(
-                                  text: label,
-                                  fontSize: 18,
-                                  color: Colors.white,
-                                  isBold: true,
-                                ),
-                                if (subtitle.isNotEmpty)
-                                  TextWidget(
-                                    text: subtitle,
-                                    fontSize: 14,
-                                    color: Colors.white70,
-                                  ),
-                              ],
+                            child: Text(
+                              label,
+                              style: const TextStyle(color: Colors.white),
                             ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.arrow_forward_ios,
-                                color: Colors.white, size: 22),
-                            onPressed: navigate,
                           ),
                         ],
                       ),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Shop Name: ${data['name'] ?? 'Unknown'}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Status: ${isVerified ? 'Approved' : 'Pending Verification'}',
+                            style: TextStyle(color: statusColor),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            isVerified
+                                ? 'Your shop is now visible to all users!'
+                                : 'Your shop will be visible once approved by our team.',
+                            style: const TextStyle(
+                                color: Colors.white60, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('Close'),
+                        ),
+                      ],
                     ),
                   );
-                },
-              ),
-            ),
-          ],
-        );
-      },
+                } else {
+                  Navigator.pushNamed(context, '/submitShop');
+                }
+              }
+
+              return GestureDetector(
+                onTap: navigate,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 16),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Icon(statusIcon,
+                                color: Colors.white, size: 28),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextWidget(
+                              text: label,
+                              fontSize: 18,
+                              color: Colors.white,
+                              isBold: true,
+                            ),
+                            if (subtitle.isNotEmpty)
+                              TextWidget(
+                                text: subtitle,
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_forward_ios,
+                            color: Colors.white, size: 22),
+                        onPressed: navigate,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

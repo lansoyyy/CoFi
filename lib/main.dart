@@ -42,16 +42,57 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const AuthGate(),
-      routes: {
-        '/cafeDetails': (context) => const CafeDetailsScreen(),
-        '/yourReviews': (context) => const YourReviewsScreen(),
-        '/visitedCafes': (context) => const VisitedCafesScreen(),
-        '/submitShop': (context) => const SubmitShopScreen(),
-        '/business': (context) => const BusinessScreen(),
-        '/businessProfile': (context) => const BusinessProfileScreen(),
-        '/businessDashboard': (context) => const BusinessDashboardScreen(),
-        '/mapView': (context) => const MapViewScreen(),
-        '/sharedCollection': (context) => const SharedCollectionScreen(),
+      onGenerateRoute: (settings) {
+        switch (settings.name) {
+          case '/cafeDetails':
+            final args = settings.arguments as Map<String, dynamic>?;
+            final shopId = args?['shopId'] as String?;
+            return MaterialPageRoute(
+              builder: (context) => CafeDetailsScreen(shopId: shopId),
+            );
+          case '/yourReviews':
+            return MaterialPageRoute(
+              builder: (context) => const YourReviewsScreen(),
+            );
+          case '/visitedCafes':
+            return MaterialPageRoute(
+              builder: (context) => const VisitedCafesScreen(),
+            );
+          case '/submitShop':
+            return MaterialPageRoute(
+              builder: (context) => const SubmitShopScreen(),
+              settings: settings,
+            );
+          case '/business':
+            return MaterialPageRoute(
+              builder: (context) => const BusinessScreen(),
+            );
+          case '/businessProfile':
+            return MaterialPageRoute(
+              builder: (context) => const BusinessProfileScreen(),
+              settings: settings,
+            );
+          case '/businessDashboard':
+            return MaterialPageRoute(
+              builder: (context) => const BusinessDashboardScreen(),
+            );
+          case '/mapView':
+            return MaterialPageRoute(
+              builder: (context) => const MapViewScreen(),
+            );
+          case '/sharedCollection':
+            return MaterialPageRoute(
+              builder: (context) => const SharedCollectionScreen(),
+            );
+          default:
+            return MaterialPageRoute(
+              builder: (context) => const Scaffold(
+                body: Center(
+                  child: Text('Page not found'),
+                ),
+              ),
+            );
+        }
       },
     );
   }

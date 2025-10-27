@@ -22,6 +22,7 @@ class ReviewsScreen extends StatelessWidget {
             .orderBy('createdAt', descending: true)
         : null;
 
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -84,7 +85,11 @@ class ReviewsScreen extends StatelessWidget {
                             ? (m['tags'] as List).cast<String>()
                             : <String>[];
                         final imageUrl = m['imageUrl'] as String?;
+
+
+                        
                         return _buildReviewCard(
+                                 rating: m['rating'],
                           name: name,
                           review: review.isNotEmpty ? review : '—',
                           tags: tags,
@@ -111,21 +116,26 @@ class ReviewsScreen extends StatelessWidget {
                     final m = (r is Map)
                         ? r.cast<String, dynamic>()
                         : <String, dynamic>{};
-                    final name = (m['authorName'] ?? m['name'] ?? 'Anonymous')
-                        .toString();
-                    final review = (m['text'] ?? m['comment'] ?? '').toString();
-                    final tags = (m['tags'] is List)
-                        ? (m['tags'] as List).cast<String>()
-                        : <String>[];
-                    final imageUrl = m['imageUrl'] as String?;
-                    return _buildReviewCard(
-                      name: name,
-                      review: review.isNotEmpty ? review : '—',
-                      tags: tags,
-                      imagePath: 'assets/images/review_placeholder.jpg',
-                      imageUrl: imageUrl,
-                    );
-                  }).toList(),
+                  final name = (m['authorName'] ?? m['name'] ?? 'Anonymous')
+                      .toString();
+                  final review = (m['text'] ?? m['comment'] ?? '').toString();
+                  final tags = (m['tags'] is List)
+                      ? (m['tags'] as List).cast<String>()
+                      : <String>[];
+                  final imageUrl = m['imageUrl'] as String?;
+                  final createdAt = m['createdAt'] as Timestamp?;
+
+                 
+                  return _buildReviewCard(
+                      rating: m['rating'],
+                    name: name,
+                    review: review.isNotEmpty ? review : '—',
+                    tags: tags,
+                    imagePath: 'assets/images/review_placeholder.jpg',
+                    imageUrl: imageUrl,
+                    createdAt: createdAt,
+                  );
+                }).toList(),
               ],
             ),
     );
@@ -137,7 +147,28 @@ class ReviewsScreen extends StatelessWidget {
     required List<String> tags,
     required String imagePath,
     String? imageUrl,
+    required int rating,
+    Timestamp? createdAt,
   }) {
+    // Calculate time difference
+    String timeAgo = '1 week ago'; // Default fallback
+    if (createdAt != null) {
+      final now = DateTime.now();
+      final reviewDate = createdAt.toDate();
+      final difference = now.difference(reviewDate);
+      
+      if (difference.inDays > 7) {
+        timeAgo = '${difference.inDays ~/ 7} week${(difference.inDays ~/ 7) > 1 ? 's' : ''} ago';
+      } else if (difference.inDays > 0) {
+        timeAgo = '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+      } else if (difference.inHours > 0) {
+        timeAgo = '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+      } else if (difference.inMinutes > 0) {
+        timeAgo = '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
+      } else {
+        timeAgo = 'Just now';
+      }
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Container(
@@ -182,14 +213,14 @@ class ReviewsScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: List.generate(
-                            5,
+                            rating,
                             (index) => const Icon(Icons.star,
                                 color: Colors.amber, size: 16),
                           ),
                         ),
                         const SizedBox(width: 10),
                         TextWidget(
-                          text: '1 week ago',
+                          text: timeAgo,
                           fontSize: 12,
                           color: Colors.white70,
                         ),

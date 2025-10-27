@@ -690,6 +690,8 @@ class CafeDetailsScreen extends StatelessWidget {
                 tags: tags,
                 imagePath: 'assets/images/review_placeholder.jpg',
                 imageUrl: imageUrl,
+                rating: m['rating'],
+                createdAt: m['createdAt']
               );
             }).toList(),
         ],
@@ -703,7 +705,29 @@ class CafeDetailsScreen extends StatelessWidget {
     required List<String> tags,
     required String imagePath,
     String? imageUrl,
+    required int rating,
+    Timestamp? createdAt,
   }) {
+
+     // Calculate time difference
+    String timeAgo = '1 week ago'; // Default fallback
+    if (createdAt != null) {
+      final now = DateTime.now();
+      final reviewDate = createdAt.toDate();
+      final difference = now.difference(reviewDate);
+      
+      if (difference.inDays > 7) {
+        timeAgo = '${difference.inDays ~/ 7} week${(difference.inDays ~/ 7) > 1 ? 's' : ''} ago';
+      } else if (difference.inDays > 0) {
+        timeAgo = '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+      } else if (difference.inHours > 0) {
+        timeAgo = '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+      } else if (difference.inMinutes > 0) {
+        timeAgo = '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
+      } else {
+        timeAgo = 'Just now';
+      }
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Container(
@@ -748,7 +772,7 @@ class CafeDetailsScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: List.generate(
-                            5,
+                            rating,
                             (index) => const Icon(Icons.star,
                                 color: Colors.amber, size: 16),
                           ),
@@ -757,7 +781,7 @@ class CafeDetailsScreen extends StatelessWidget {
                           width: 10,
                         ),
                         TextWidget(
-                          text: ' week ago',
+                          text: timeAgo,
                           fontSize: 12,
                           color: Colors.white70,
                         ),
@@ -934,6 +958,8 @@ class CafeDetailsScreen extends StatelessWidget {
                     tags: tags,
                     imagePath: 'assets/images/review_placeholder.jpg',
                     imageUrl: imageUrl,
+                    rating: m['rating'],
+                    createdAt: m['createdAt'] as Timestamp?,
                   );
                 }).toList(),
             ],

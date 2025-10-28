@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/text_widget.dart';
 import '../../utils/colors.dart';
+import '../screens/subscreens/shop_selection_screen.dart';
 
 class CreateListBottomSheet extends StatefulWidget {
   const CreateListBottomSheet({Key? key}) : super(key: key);
@@ -32,6 +33,24 @@ class _CreateListBottomSheetState extends State<CreateListBottomSheet> {
     'Artsy / Aesthetic': false,
     'Instagrammable': false,
   };
+
+  // Collection type selection
+  String _collectionType = 'filter'; // 'filter' or 'custom'
+  List<String> _selectedShopIds = []; // For custom collections
+
+  // Check if save button should be enabled
+  bool get _isSaveButtonEnabled {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return false;
+
+    if (_collectionType == 'filter') {
+      // Check if any tags are selected
+      return _selectedTags.values.any((selected) => selected);
+    } else {
+      // Custom collection - check if any shops are selected
+      return _selectedShopIds.isNotEmpty;
+    }
+  }
 
   @override
   void dispose() {
@@ -72,6 +91,99 @@ class _CreateListBottomSheetState extends State<CreateListBottomSheet> {
                     onPressed: () {
                       Navigator.pop(context);
                     },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Collection Type Selection
+              TextWidget(
+                text: 'Collection Type',
+                fontSize: 16,
+                color: Colors.white,
+                isBold: true,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _collectionType = 'filter'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: _collectionType == 'filter'
+                              ? primary
+                              : Colors.grey[800],
+                          borderRadius: BorderRadius.circular(12),
+                          border: _collectionType == 'filter'
+                              ? Border.all(color: primary, width: 2)
+                              : null,
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.filter_list,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                            const SizedBox(height: 8),
+                            TextWidget(
+                              text: 'Filter Based',
+                              fontSize: 14,
+                              color: Colors.white,
+                              isBold: true,
+                            ),
+                            const SizedBox(height: 4),
+                            TextWidget(
+                              text: 'Auto-populate based on tags',
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _collectionType = 'custom'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: _collectionType == 'custom'
+                              ? primary
+                              : Colors.grey[800],
+                          borderRadius: BorderRadius.circular(12),
+                          border: _collectionType == 'custom'
+                              ? Border.all(color: primary, width: 2)
+                              : null,
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.handshake,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                            const SizedBox(height: 8),
+                            TextWidget(
+                              text: 'Custom Collection',
+                              fontSize: 14,
+                              color: Colors.white,
+                              isBold: true,
+                            ),
+                            const SizedBox(height: 4),
+                            TextWidget(
+                              text: 'Manually select cafes',
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -143,106 +255,186 @@ class _CreateListBottomSheetState extends State<CreateListBottomSheet> {
               ),
               const SizedBox(height: 8),
 
-              // Filters: Tags
-              TextWidget(
-                text: 'Filters (optional)',
-                fontSize: 16,
-                color: Colors.white,
-                isBold: true,
-              ),
-              const SizedBox(height: 8),
-              TextWidget(
-                text: 'Select tags to auto-filter shops in this list',
-                fontSize: 12,
-                color: Colors.white70,
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: _selectedTags.keys.map((t) {
-                  final selected = _selectedTags[t] ?? false;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedTags[t] = !selected),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: selected ? primary : Colors.grey[800],
-                        borderRadius: BorderRadius.circular(20),
+              // Show different content based on collection type
+              if (_collectionType == 'filter') ...[
+                // Filters: Tags
+                TextWidget(
+                  text: 'Filters (optional)',
+                  fontSize: 16,
+                  color: Colors.white,
+                  isBold: true,
+                ),
+                const SizedBox(height: 8),
+                TextWidget(
+                  text: 'Select tags to auto-filter shops in this list',
+                  fontSize: 12,
+                  color: Colors.white70,
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: _selectedTags.keys.map((t) {
+                    final selected = _selectedTags[t] ?? false;
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedTags[t] = !selected),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: selected ? primary : Colors.grey[800],
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: TextWidget(
+                          text: t,
+                          fontSize: 13,
+                          color: Colors.white,
+                        ),
                       ),
-                      child: TextWidget(
-                        text: t,
-                        fontSize: 13,
-                        color: Colors.white,
-                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+              ] else ...[
+                // Custom Collection: Shop Selection
+                TextWidget(
+                  text: 'Select Cafes',
+                  fontSize: 16,
+                  color: Colors.white,
+                  isBold: true,
+                ),
+                const SizedBox(height: 8),
+                TextWidget(
+                  text: 'Search and manually add cafes to your collection',
+                  fontSize: 12,
+                  color: Colors.white70,
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[800],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      // Navigate to shop selection screen
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ShopSelectionScreen(
+                            initiallySelectedShopIds: _selectedShopIds,
+                          ),
+                        ),
+                      );
+
+                      if (result != null && result is List<String>) {
+                        setState(() {
+                          _selectedShopIds = result;
+                        });
+                      }
+                    },
+                    icon: const Icon(Icons.search, color: Colors.white),
+                    label: TextWidget(
+                      text: _selectedShopIds.isEmpty
+                          ? 'Search and add cafes'
+                          : '${_selectedShopIds.length} cafe${_selectedShopIds.length == 1 ? '' : 's'} selected',
+                      fontSize: 14,
+                      color: Colors.white,
                     ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // Save Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () async {
-                    final name = _nameController.text.trim();
-                    final description = _descriptionController.text.trim();
-                    if (name.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please enter a name')),
-                      );
-                      return;
-                    }
-                    final user = FirebaseAuth.instance.currentUser;
-                    if (user == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Sign in to create lists')),
-                      );
-                      return;
-                    }
-                    try {
-                      final listsCol = FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(user.uid)
-                          .collection('lists');
-                      final now = FieldValue.serverTimestamp();
-                      final selectedTags = _selectedTags.entries
-                          .where((e) => e.value)
-                          .map((e) => e.key)
-                          .toList();
-                      final docRef = await listsCol.add({
-                        'name': name,
-                        'description': description,
-                        'createdAt': now,
-                        'updatedAt': now,
-                        if (selectedTags.isNotEmpty)
-                          'filters': {
-                            'tags': selectedTags,
-                          },
-                      });
-                      if (context.mounted) {
-                        Navigator.pop(context, docRef.id);
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to create list: $e')),
-                        );
-                      }
-                    }
-                  },
+                  onPressed: _isSaveButtonEnabled
+                      ? () async {
+                          final name = _nameController.text.trim();
+                          final description =
+                              _descriptionController.text.trim();
+                          final user = FirebaseAuth.instance.currentUser;
+                          if (user == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Sign in to create lists')),
+                            );
+                            return;
+                          }
+                          try {
+                            final listsCol = FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .collection('lists');
+                            final now = FieldValue.serverTimestamp();
+                            DocumentReference docRef;
+
+                            if (_collectionType == 'custom') {
+                              // Custom collection - save selected shops
+
+                              docRef = await listsCol.add({
+                                'name': name,
+                                'description': description,
+                                'createdAt': now,
+                                'updatedAt': now,
+                                'type': 'custom',
+                              });
+
+                              // Add selected shops to the items subcollection
+                              for (final shopId in _selectedShopIds) {
+                                await docRef.collection('items').add({
+                                  'shopId': shopId,
+                                  'addedAt': now,
+                                });
+                              }
+                            } else {
+                              // Filter-based collection
+                              final selectedTags = _selectedTags.entries
+                                  .where((e) => e.value)
+                                  .map((e) => e.key)
+                                  .toList();
+                              docRef = await listsCol.add({
+                                'name': name,
+                                'description': description,
+                                'createdAt': now,
+                                'updatedAt': now,
+                                'type': 'filter',
+                                if (selectedTags.isNotEmpty)
+                                  'filters': {
+                                    'tags': selectedTags,
+                                  },
+                              });
+                            }
+
+                            if (context.mounted) {
+                              Navigator.pop(context, docRef.id);
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text('Failed to create list: $e')),
+                              );
+                            }
+                          }
+                        }
+                      : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[600],
+                    backgroundColor:
+                        _isSaveButtonEnabled ? primary : Colors.grey[600],
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
                   child: TextWidget(
-                    text: 'Save',
+                    text: _isSaveButtonEnabled ? 'Save' : '',
                     fontSize: 16,
                     color: Colors.white,
                     isBold: true,

@@ -373,9 +373,9 @@ class CommunityTab extends StatelessWidget {
     final sharedAt = collection['sharedAt'] as Timestamp?;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 0),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
         leading: Container(
           width: 40,
           height: 40,
@@ -397,7 +397,7 @@ class CommunityTab extends StatelessWidget {
         ),
         subtitle: TextWidget(
           text:
-              'Shared by $sharedBy • ${sharedAt != null ? _formatTimestamp(sharedAt) : 'Recently'}',
+              '${collection['shopCount']} shops • ${sharedAt != null ? _formatTimestamp(sharedAt) : 'Recently'}',
           fontSize: 13,
           color: Colors.white70,
         ),

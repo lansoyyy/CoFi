@@ -211,10 +211,20 @@ class _SharedCollectionScreenState extends State<SharedCollectionScreen> {
       );
     }
 
-    if (_collectionData == null || _shopsList == null) {
+    if (_collectionData == null) {
       return Center(
         child: TextWidget(
-          text: 'No data available',
+          text: 'No collection data available',
+          fontSize: 16,
+          color: Colors.white,
+        ),
+      );
+    }
+
+    if (_shopsList == null) {
+      return Center(
+        child: TextWidget(
+          text: 'No shops data available',
           fontSize: 16,
           color: Colors.white,
         ),
@@ -266,19 +276,6 @@ class _SharedCollectionScreenState extends State<SharedCollectionScreen> {
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Icon(Icons.person, color: Colors.white54, size: 16),
-                  const SizedBox(width: 4),
-                  TextWidget(
-                    text:
-                        'Shared by ${_collectionData!['sharedBy'] ?? 'Anonymous'}',
-                    fontSize: 13,
-                    color: Colors.white54,
                   ),
                 ],
               ),

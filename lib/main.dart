@@ -83,6 +83,7 @@ class MyApp extends StatelessWidget {
           case '/sharedCollection':
             return MaterialPageRoute(
               builder: (context) => const SharedCollectionScreen(),
+              settings: settings,
             );
           default:
             return MaterialPageRoute(

@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final userCredential = await GoogleSignInService.signInWithGoogle();
+      final userCredential = await GoogleSignInService.signInWithGoogle(forceAccountSelection: true);
 
       if (userCredential != null && mounted) {
         // Navigate to home screen
@@ -95,6 +95,92 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     }
+  }
+
+  void _showForgotPasswordDialog() {
+    final forgotPasswordEmailController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: TextWidget(
+          text: 'Reset Password',
+          fontSize: 20,
+          color: Colors.white,
+          isBold: true,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextWidget(
+              text: 'Enter your email address to receive a password reset link.',
+              fontSize: 14,
+              color: Colors.grey[400]!,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: TextFormField(
+                controller: forgotPasswordEmailController,
+                keyboardType: TextInputType.emailAddress,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'Email',
+                  hintStyle: TextStyle(color: Colors.grey),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: TextWidget(
+              text: 'Cancel',
+              fontSize: 14,
+              color: Colors.grey[400]!,
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final email = forgotPasswordEmailController.text.trim();
+              if (email.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter your email')),
+                );
+                return;
+              }
+              
+              try {
+                await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Password reset email sent!')),
+                );
+              } on FirebaseAuthException catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error: ${e.message}')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primary,
+            ),
+            child: TextWidget(
+              text: 'Send',
+              fontSize: 14,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -206,6 +292,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                   return null;
                                 },
                               )),
+                        ),
+                        const SizedBox(height: 10),
+                        
+                        // Forgot Password
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: GestureDetector(
+                            onTap: _showForgotPasswordDialog,
+                            child: TextWidget(
+                              text: "Forgot Password?",
+                              fontSize: 14,
+                              color: primary,
+                              isBold: true,
+                            ),
+                          ),
                         ),
                       ],
                     ),

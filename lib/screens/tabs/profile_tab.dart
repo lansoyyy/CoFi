@@ -1,5 +1,6 @@
 import 'package:cofi/screens/auth/login_screen.dart';
 import 'package:cofi/utils/colors.dart';
+import 'package:cofi/services/google_sign_in_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -65,7 +66,7 @@ class ProfileTab extends StatelessWidget {
                                   TextButton(
                                     onPressed: () async {
                                       try {
-                                        await FirebaseAuth.instance.signOut();
+                                        await GoogleSignInService.signOut();
                                         Navigator.pushReplacement(
                                           context,
                                           MaterialPageRoute(

@@ -6,10 +6,20 @@ class GoogleSignInService {
   static final GoogleSignIn _googleSignIn = GoogleSignIn();
   static final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  static Future<UserCredential?> signInWithGoogle() async {
+  static Future<UserCredential?> signInWithGoogle({bool forceAccountSelection = false}) async {
     try {
       // Trigger the authentication flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      GoogleSignInAccount? googleUser;
+      
+      if (forceAccountSelection) {
+        // Force account selection by signing out first
+        await _googleSignIn.signOut();
+        // Then sign in with forced account selection
+        googleUser = await _googleSignIn.signIn();
+      } else {
+        // Normal sign in flow
+        googleUser = await _googleSignIn.signIn();
+      }
 
       // Return null if user cancels the sign-in flow
       if (googleUser == null) {

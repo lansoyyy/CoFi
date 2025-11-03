@@ -66,7 +66,7 @@ class ProfileTab extends StatelessWidget {
                                   TextButton(
                                     onPressed: () async {
                                       try {
-                                        await GoogleSignInService.signOut();
+                                        // await GoogleSignInService.signOut();
                                         Navigator.pushReplacement(
                                           context,
                                           MaterialPageRoute(

@@ -1,3 +1,4 @@
+import 'package:cofi/screens/auth/login_screen.dart';
 import 'package:cofi/screens/home_screen.dart';
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
@@ -98,7 +99,7 @@ class _InterestSelectionScreenState extends State<InterestSelectionScreen> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
     } catch (e) {
       if (mounted) {

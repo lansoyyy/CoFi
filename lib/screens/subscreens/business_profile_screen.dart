@@ -105,11 +105,11 @@ class BusinessProfileScreen extends StatelessWidget {
                     null, // isVerified
                   ),
 
-                const SizedBox(height: 32),
+                // const SizedBox(height: 32),
 
-                // Analytics Stats Section
-                if (shopId != null && shopId.isNotEmpty)
-                  _buildAnalyticsSection(shopId),
+                // // Analytics Stats Section
+                // if (shopId != null && shopId.isNotEmpty)
+                //   _buildAnalyticsSection(shopId),
 
                 const SizedBox(height: 32),
 

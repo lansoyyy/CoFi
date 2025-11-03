@@ -1,4 +1,5 @@
 import 'package:cofi/screens/auth/community_commitment_screen.dart';
+import 'package:cofi/screens/auth/login_screen.dart';
 import 'package:cofi/utils/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -48,6 +49,9 @@ class _SignupScreenState extends State<SignupScreen> {
           .createUserWithEmailAndPassword(email: email, password: pwd);
       await cred.user?.updateDisplayName('$first $last');
 
+      // Send email verification
+      await cred.user?.sendEmailVerification();
+
       await FirebaseFirestore.instance
           .collection('users')
           .doc(cred.user!.uid)
@@ -64,14 +68,62 @@ class _SignupScreenState extends State<SignupScreen> {
         'visited': [],
         'reviews': [],
         'accountType': widget.accountType, // 'user' or 'business'
+        'emailVerified': false, // Track email verification status
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
       if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const CommunityCommitmentScreen(),
+      
+      // Show verification message and navigate to login screen
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: TextWidget(
+            text: 'Verification Email Sent',
+            fontSize: 20,
+            color: Colors.white,
+            isBold: true,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextWidget(
+                text: 'We\'ve sent a verification email to $email. Please check your inbox and verify your email before logging in.',
+                fontSize: 14,
+                color: Colors.white70,
+                align: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              TextWidget(
+                text: 'Note: You must verify your email before you can log in.',
+                fontSize: 12,
+                color: Colors.orange[400],
+                isBold: true,
+                align: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CommunityCommitmentScreen(),
+                  ),
+                );
+              },
+              child: TextWidget(
+                text: 'Got it',
+                fontSize: 16,
+                color: primary,
+                isBold: true,
+              ),
+            ),
+          ],
         ),
       );
     } on FirebaseAuthException catch (e) {

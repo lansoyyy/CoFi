@@ -40,6 +40,12 @@ class GoogleSignInService {
       final UserCredential userCredential =
           await _auth.signInWithCredential(credential);
 
+      // Check if email is verified (Google accounts are typically verified by default)
+      if (!userCredential.user!.emailVerified) {
+        await _auth.signOut();
+        throw Exception('Email not verified. Please verify your email and try again.');
+      }
+
       // Create or update user data in Firestore
       await _createOrUpdateUser(userCredential.user!);
 
@@ -69,6 +75,7 @@ class GoogleSignInService {
         'bookmarks': [],
         'visited': [],
         'reviews': [],
+        'emailVerified': user.emailVerified, // Track email verification status
         'createdAt': FieldValue.serverTimestamp(),
         'lastLoginAt': FieldValue.serverTimestamp(),
       });
@@ -78,6 +85,7 @@ class GoogleSignInService {
         'lastLoginAt': FieldValue.serverTimestamp(),
         'displayName': user.displayName,
         'photoUrl': user.photoURL,
+        'emailVerified': user.emailVerified, // Update email verification status
       });
     }
   }

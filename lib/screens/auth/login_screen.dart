@@ -5,6 +5,7 @@ import 'package:cofi/services/google_sign_in_service.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/colors.dart';
 import '../../widgets/text_widget.dart';
 import '../../widgets/button_widget.dart';
@@ -34,10 +35,85 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+      
+      // Check if email is verified
+      if (!userCredential.user!.emailVerified) {
+        await FirebaseAuth.instance.signOut(); // Sign out the user
+        
+        if (!mounted) return;
+        
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            backgroundColor: Colors.grey[900],
+            title: TextWidget(
+              text: 'Email Not Verified',
+              fontSize: 20,
+              color: Colors.white,
+              isBold: true,
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextWidget(
+                  text: 'Please verify your email before logging in. Check your inbox for the verification email.',
+                  fontSize: 14,
+                  color: Colors.white70,
+                  align: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () async {
+                    try {
+                      await userCredential.user?.sendEmailVerification();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Verification email resent!')),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to resend email: $e')),
+                        );
+                      }
+                    }
+                  },
+                  child: TextWidget(
+                    text: 'Resend verification email',
+                    fontSize: 14,
+                    color: primary,
+                    isBold: true,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: TextWidget(
+                  text: 'OK',
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+      
+      // Update email verification status in Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .update({'emailVerified': true});
+      
       if (!mounted) return;
       Navigator.pushReplacement(
         context,

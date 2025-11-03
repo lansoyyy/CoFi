@@ -1,9 +1,11 @@
 import 'package:cofi/firebase_options.dart';
 import 'package:cofi/screens/auth/landing_screen.dart';
 import 'package:cofi/screens/auth/login_screen.dart';
+import 'package:cofi/services/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/auth/splash_screen.dart';
 import 'screens/auth/signup_screen.dart';
@@ -20,16 +22,20 @@ import 'screens/subscreens/map_view_screen.dart';
 import 'screens/shared_collection_screen.dart';
 import 'utils/colors.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    name: 'cofi-3e5f4',
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  runApp(const MyApp());
-}
-
+  
+  void main() async {
+    
+    WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp(
+      name: 'cofi-3e5f4',
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+     await GetStorage.init();
+    
+  
+    
+    runApp(const MyApp());
+  }
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 

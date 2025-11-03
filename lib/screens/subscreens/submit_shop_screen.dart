@@ -32,6 +32,7 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
   final ImagePicker _picker = ImagePicker();
   File? _selectedImage;
   List<File> _galleryImages = [];
+  List<File> _menuPriceImages = [];
   bool _isUploading = false;
 
   // Selected tags state
@@ -164,6 +165,10 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
           _locationType = 'custom_location';
         });
       }
+
+      // Note: We're not loading existing menu/price photos as File objects
+      // since they would need to be downloaded first. For simplicity,
+      // we're only handling new uploads during editing.
     } catch (_) {
       // ignore, basic UX handled by unchanged fields
     } finally {
@@ -367,6 +372,15 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
           }
         }
 
+        // Upload menu/price images if selected
+        if (_menuPriceImages.isNotEmpty) {
+          final menuPriceUrls =
+              await _uploadMenuPriceImagesToFirebase(_editShopId!);
+          if (menuPriceUrls.isNotEmpty) {
+            updateData['menuPricePhotos'] = menuPriceUrls;
+          }
+        }
+
         await FirebaseFirestore.instance
             .collection('shops')
             .doc(_editShopId)
@@ -433,6 +447,14 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
           final galleryUrls = await _uploadGalleryImagesToFirebase(ref.id);
           if (galleryUrls.isNotEmpty) {
             await ref.update({'gallery': galleryUrls});
+          }
+        }
+
+        // Upload menu/price images if selected
+        if (_menuPriceImages.isNotEmpty) {
+          final menuPriceUrls = await _uploadMenuPriceImagesToFirebase(ref.id);
+          if (menuPriceUrls.isNotEmpty) {
+            await ref.update({'menuPricePhotos': menuPriceUrls});
           }
         }
 
@@ -702,6 +724,110 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
                                 height: 80,
                                 fit: BoxFit.cover,
                               ),
+                            ),
+                          );
+                        }).toList(),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Menu/Price Photos
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextWidget(
+                          text: 'Menu/Price Photos',
+                          fontSize: 16,
+                          color: Colors.white,
+                          isBold: true,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Menu/Price Images
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _isUploading ? null : _pickMenuPriceImages,
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: primary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: _isUploading
+                                ? const Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
+                                      ),
+                                    ),
+                                  )
+                                : Center(
+                                    child: Icon(
+                                      Icons.add_a_photo,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        ..._menuPriceImages.asMap().entries.map((entry) {
+                          int idx = entry.key;
+                          File image = entry.value;
+                          return Container(
+                            width: 80,
+                            height: 80,
+                            margin: EdgeInsets.only(
+                                right:
+                                    idx == _menuPriceImages.length - 1 ? 0 : 16),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(
+                                    image,
+                                    width: 80,
+                                    height: 80,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _menuPriceImages.removeAt(idx);
+                                      });
+                                    },
+                                    child: Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black54,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.close,
+                                        color: Colors.white,
+                                        size: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           );
                         }).toList(),
@@ -1085,6 +1211,41 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
     }
   }
 
+  Future<List<String>> _uploadMenuPriceImagesToFirebase(String shopId) async {
+    List<String> downloadUrls = [];
+
+    if (_menuPriceImages.isEmpty) return downloadUrls;
+
+    try {
+      setState(() {
+        _isUploading = true;
+      });
+
+      for (int i = 0; i < _menuPriceImages.length; i++) {
+        final fileName =
+            'menu_price_${shopId}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+        final storageRef =
+            FirebaseStorage.instance.ref().child('shop_images').child(fileName);
+
+        final uploadTask = storageRef.putFile(_menuPriceImages[i]);
+        final snapshot = await uploadTask;
+        final downloadUrl = await snapshot.ref.getDownloadURL();
+        downloadUrls.add(downloadUrl);
+      }
+
+      return downloadUrls;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload menu/price images: $e')),
+      );
+      return [];
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
+    }
+  }
+
   Map<String, dynamic> _buildSchedulePayload() {
     String _fmt(TimeOfDay? t) => t == null
         ? ''
@@ -1283,6 +1444,24 @@ class _SubmitShopScreenState extends State<SubmitShopScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to pick images: $e')),
+      );
+    }
+  }
+
+  Future<void> _pickMenuPriceImages() async {
+    try {
+      final List<XFile> pickedFiles = await _picker.pickMultiImage(
+        imageQuality: 80,
+      );
+
+      if (pickedFiles.isNotEmpty) {
+        setState(() {
+          _menuPriceImages.addAll(pickedFiles.map((file) => File(file.path)).toList());
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to pick menu/price images: $e')),
       );
     }
   }

@@ -9,6 +9,7 @@ import '../../utils/colors.dart';
 import 'reviews_screen.dart';
 import 'log_visit_screen.dart';
 import 'write_review_screen.dart';
+import 'menu_photos_screen.dart';
 
 class _ContactItem {
   final String label;
@@ -162,6 +163,10 @@ class CafeDetailsScreen extends StatelessWidget {
 
     // Get logo URL
     final String? logoUrl = s['logoUrl'] as String?;
+    
+    // Get menu/price photos
+    final List<String> menuPricePhotos =
+        (s['menuPricePhotos'] as List?)?.cast<String>() ?? const [];
 
     // Build contacts with links
     final List<_ContactItem> contactItems = [];
@@ -301,8 +306,7 @@ class CafeDetailsScreen extends StatelessWidget {
                   const SizedBox(height: 32),
                   _buildContactsSection(contactItems),
                   const SizedBox(height: 32),
-                  _buildSection('Menu', 'Tap to view Menu',
-                      icon: Icons.menu_book),
+                  _buildMenuSection(context, name, menuPricePhotos),
                   const SizedBox(height: 32),
                   (shopId != null && shopId!.isNotEmpty)
                       ? _buildReviewsSummaryStream(shopId!)
@@ -597,6 +601,68 @@ class CafeDetailsScreen extends StatelessWidget {
               fontSize: 16,
               color: Colors.white,
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuSection(BuildContext context, String shopName, List<String> menuPricePhotos) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextWidget(
+            text: 'Menu',
+            fontSize: 18,
+            color: Colors.white,
+            isBold: true,
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MenuPhotosScreen(
+                    menuPhotos: menuPricePhotos,
+                    shopName: shopName,
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.menu_book, color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextWidget(
+                      text: menuPricePhotos.isEmpty
+                          ? 'No menu photos available'
+                          : 'Tap to view Menu (${menuPricePhotos.length} photos)',
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

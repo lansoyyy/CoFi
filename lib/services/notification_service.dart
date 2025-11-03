@@ -205,4 +205,269 @@ class NotificationService {
       print('Error deleting notification: $e');
     }
   }
+
+  // Check for new data in collections and create notifications
+  Future<void> checkForNewData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      // Get the last check time from storage
+      final lastCheckKey = 'last_notification_check';
+      final lastCheck = _storage.read(lastCheckKey);
+      final now = DateTime.now();
+      
+      // Convert to Timestamp for Firestore query
+      Timestamp? lastCheckTimestamp;
+      if (lastCheck != null) {
+        lastCheckTimestamp = Timestamp.fromDate(DateTime.fromMillisecondsSinceEpoch(lastCheck));
+      }
+
+      // Check for new events
+      await _checkForNewEvents(user.uid, lastCheckTimestamp);
+      
+      // Check for new jobs
+      await _checkForNewJobs(user.uid, lastCheckTimestamp);
+      
+      // Check for new jobs
+      await _checkForNewJobs(user.uid, lastCheckTimestamp);
+      
+      // Check for new job applications
+      await _checkForNewJobApplications(user.uid, lastCheckTimestamp);
+      
+      // Check for new shops
+      await _checkForNewShops(user.uid, lastCheckTimestamp);
+      
+      // Update the last check time
+      _storage.write(lastCheckKey, now.millisecondsSinceEpoch);
+    } catch (e) {
+      print('Error checking for new data: $e');
+    }
+  }
+
+  // Check for new events and create notifications
+  Future<void> _checkForNewEvents(String userId, Timestamp? lastCheck) async {
+    try {
+      // First get all shops to check their events subcollections
+      final shopsSnapshot = await FirebaseFirestore.instance.collection('shops').get();
+      
+      for (final shopDoc in shopsSnapshot.docs) {
+        final shopId = shopDoc.id;
+        Query eventsQuery = FirebaseFirestore.instance
+            .collection('shops')
+            .doc(shopId)
+            .collection('events');
+            
+        if (lastCheck != null) {
+          eventsQuery = eventsQuery.where('createdAt', isGreaterThan: lastCheck);
+        }
+        
+        final eventsSnapshot = await eventsQuery.get();
+        
+        for (final eventDoc in eventsSnapshot.docs) {
+          final eventData = eventDoc.data() as Map<String, dynamic>?;
+          if (eventData == null) continue;
+          final eventId = eventDoc.id;
+          final eventTitle = eventData['title'] ?? 'New Event';
+          final imageUrl = eventData['imageUrl'];
+          
+          // Check if notification already exists for this event
+          final existingNotification = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('notifications')
+              .where('type', isEqualTo: 'event')
+              .where('relatedId', isEqualTo: eventId)
+              .get();
+             
+          if (existingNotification.docs.isEmpty) {
+            await createEventNotification(eventId, eventTitle, imageUrl);
+          }
+        }
+      }
+    } catch (e) {
+      print('Error checking for new events: $e');
+    }
+  }
+
+  // Check for new jobs and create notifications
+  Future<void> _checkForNewJobs(String userId, Timestamp? lastCheck) async {
+    try {
+      // First get all shops to check their jobs subcollections
+      final shopsSnapshot = await FirebaseFirestore.instance.collection('shops').get();
+      
+      for (final shopDoc in shopsSnapshot.docs) {
+        final shopId = shopDoc.id;
+        Query jobsQuery = FirebaseFirestore.instance
+            .collection('shops')
+            .doc(shopId)
+            .collection('jobs');
+            
+        if (lastCheck != null) {
+          jobsQuery = jobsQuery.where('createdAt', isGreaterThan: lastCheck);
+        }
+        
+        final jobsSnapshot = await jobsQuery.get();
+        
+        for (final jobDoc in jobsSnapshot.docs) {
+          final jobData = jobDoc.data() as Map<String, dynamic>?;
+          if (jobData == null) continue;
+          final jobId = jobDoc.id;
+          final jobTitle = jobData['title'] ?? 'New Job';
+          final shopName = jobData['shopName'] ?? jobData['cafe'] ?? 'Coffee Shop';
+          
+          // Check if notification already exists for this job
+          final existingNotification = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('notifications')
+              .where('type', isEqualTo: 'job')
+              .where('relatedId', isEqualTo: jobId)
+              .get();
+             
+          if (existingNotification.docs.isEmpty) {
+            await createJobNotification(jobId, jobTitle, shopName);
+          }
+        }
+      }
+    } catch (e) {
+      print('Error checking for new jobs: $e');
+    }
+  }
+
+  // Check for new job applications and create notifications
+  Future<void> _checkForNewJobApplications(String userId, Timestamp? lastCheck) async {
+    try {
+      // Get all shops to check their jobs subcollections for applications
+      final shopsSnapshot = await FirebaseFirestore.instance.collection('shops').get();
+      
+      for (final shopDoc in shopsSnapshot.docs) {
+        final shopId = shopDoc.id;
+        Query jobsQuery = FirebaseFirestore.instance
+            .collection('shops')
+            .doc(shopId)
+            .collection('jobs');
+            
+        if (lastCheck != null) {
+          jobsQuery = jobsQuery.where('createdAt', isGreaterThan: lastCheck);
+        }
+        
+        final jobsSnapshot = await jobsQuery.get();
+        
+        for (final jobDoc in jobsSnapshot.docs) {
+          final jobData = jobDoc.data() as Map<String, dynamic>?;
+          if (jobData == null) continue;
+          final jobId = jobDoc.id;
+          
+          // Check if this job has applications from the current user
+          if (jobData.containsKey('applications')) {
+            final applications = jobData['applications'] as List<dynamic>?;
+            if (applications != null) {
+              for (final application in applications!) {
+                if (application is Map<String, dynamic> &&
+                    application['applicantId'] == userId) {
+                  final applicationId = application['id'] ?? '';
+                  final applicantName = application['applicantName'] ?? 'Applicant';
+                  final status = application['status'] ?? 'pending';
+                  final appliedAt = application['appliedAt'] as Timestamp?;
+                  
+                  // Check if notification already exists for this application
+                  final existingNotification = await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(userId)
+                      .collection('notifications')
+                      .where('type', isEqualTo: 'job_application')
+                      .where('relatedId', isEqualTo: applicationId)
+                      .get();
+                     
+                  if (existingNotification.docs.isEmpty) {
+                    await _createJobApplicationNotification(
+                      applicationId,
+                      applicantName,
+                      status,
+                      appliedAt,
+                      jobId,
+                      jobData['title'] ?? 'New Job',
+                      jobData['shopName'] ?? jobData['cafe'] ?? 'Coffee Shop'
+                    );
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error checking for new job applications: $e');
+    }
+  }
+
+  // Create a notification for a new job application
+  Future<void> _createJobApplicationNotification(
+    String applicationId,
+    String applicantName,
+    String status,
+    Timestamp? appliedAt,
+    String jobId,
+    String jobTitle,
+    String shopName
+  ) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    String statusText = 'Pending';
+    if (status == 'accepted') {
+      statusText = 'Accepted';
+    } else if (status == 'rejected') {
+      statusText = 'Rejected';
+    }
+
+    final notification = NotificationModel(
+      id: _firestore.collection('users').doc().id,
+      title: 'Job Application Update',
+      body: '$applicantName\'s application for $jobTitle at $shopName is $statusText',
+      type: 'job_application',
+      relatedId: applicationId,
+      createdAt: appliedAt?.toDate() ?? DateTime.now(),
+      isRead: false,
+    );
+
+    await _saveNotification(user.uid, notification);
+  }
+
+  // Check for new shops and create notifications
+  Future<void> _checkForNewShops(String userId, Timestamp? lastCheck) async {
+    try {
+      Query shopsQuery = FirebaseFirestore.instance.collection('shops');
+      
+      if (lastCheck != null) {
+        shopsQuery = shopsQuery.where('postedAt', isGreaterThan: lastCheck);
+      }
+      
+      final shopsSnapshot = await shopsQuery.get();
+      
+      for (final shopDoc in shopsSnapshot.docs) {
+        final shopData = shopDoc.data() as Map<String, dynamic>?;
+        if (shopData == null) continue;
+        final shopId = shopDoc.id;
+        final shopName = shopData['name'] ?? 'New Coffee Shop';
+        final imageUrl = shopData['logoUrl'];
+        
+        // Check if notification already exists for this shop
+        final existingNotification = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('notifications')
+            .where('type', isEqualTo: 'shop')
+            .where('relatedId', isEqualTo: shopId)
+            .get();
+            
+        if (existingNotification.docs.isEmpty) {
+          await createShopNotification(shopId, shopName, imageUrl);
+        }
+      }
+    } catch (e) {
+      print('Error checking for new shops: $e');
+    }
+  }
 }

@@ -24,8 +24,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   void initState() {
     super.initState();
-    // Mark all notifications as read when screen opens
+    // Check for new data and create notifications
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _notificationService.checkForNewData();
+      // Mark all notifications as read when screen opens
       _notificationService.markAllAsRead();
     });
   }
@@ -287,6 +289,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
         return Colors.purple;
       case 'job':
         return Colors.green;
+      case 'job_application':
+        return Colors.orange;
       case 'shop':
         return Colors.blue;
       default:
@@ -300,6 +304,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
         return Icons.event;
       case 'job':
         return Icons.work;
+      case 'job_application':
+        return Icons.work_history;
       case 'shop':
         return Icons.store;
       default:
@@ -322,49 +328,109 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
-  void _navigateToRelatedContent(NotificationModel notification) {
+  void _navigateToRelatedContent(NotificationModel notification) async {
     switch (notification.type) {
       case 'event':
         if (notification.relatedId != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EventDetailsScreen(
-                event: {
-                  'id': notification.relatedId,
-                  'title': notification.body.split(':').last.trim(),
-                },
-              ),
-            ),
-          );
+          try {
+            // Fetch the full event data
+            // First try to find which shop contains this event
+            final shopsSnapshot = await FirebaseFirestore.instance.collection('shops').get();
+            DocumentSnapshot? eventDoc;
+            
+            for (final shopDoc in shopsSnapshot.docs) {
+              final eventSnapshot = await FirebaseFirestore.instance
+                  .collection('shops')
+                  .doc(shopDoc.id)
+                  .collection('events')
+                  .doc(notification.relatedId)
+                  .get();
+                  
+              if (eventSnapshot.exists) {
+                eventDoc = eventSnapshot;
+                break;
+              }
+            }
+                
+            if (eventDoc != null && eventDoc.exists) {
+              final eventData = eventDoc.data() as Map<String, dynamic>?;
+              if (eventData != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EventDetailsScreen(
+                      event: {
+                        ...eventData,
+                        'id': notification.relatedId,
+                      },
+                    ),
+                  ),
+                );
+              }
+            }
+          } catch (e) {
+            print('Error navigating to event: $e');
+          }
         }
         break;
       case 'job':
         if (notification.relatedId != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => JobDetailsScreen(
-                job: {
-                  'id': notification.relatedId,
-                  'title': notification.body.split(':').last.trim(),
-                },
-                shopId: '',
-              ),
-            ),
-          );
+          try {
+            // Fetch the full job data
+            // First try to find which shop contains this job
+            final shopsSnapshot = await FirebaseFirestore.instance.collection('shops').get();
+            DocumentSnapshot? jobDoc;
+            
+            for (final shopDoc in shopsSnapshot.docs) {
+              final jobSnapshot = await FirebaseFirestore.instance
+                  .collection('shops')
+                  .doc(shopDoc.id)
+                  .collection('jobs')
+                  .doc(notification.relatedId)
+                  .get();
+                  
+              if (jobSnapshot.exists) {
+                jobDoc = jobSnapshot;
+                break;
+              }
+            }
+                
+            if (jobDoc != null && jobDoc.exists) {
+              final jobData = jobDoc.data() as Map<String, dynamic>?;
+              if (jobData != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => JobDetailsScreen(
+                      job: {
+                        ...jobData,
+                        'id': notification.relatedId,
+                      },
+                      shopId: jobData['shopId'] ?? '',
+                    ),
+                  ),
+                );
+              }
+            }
+          } catch (e) {
+            print('Error navigating to job: $e');
+          }
         }
         break;
       case 'shop':
         if (notification.relatedId != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CafeDetailsScreen(
-                shopId: notification.relatedId!,
+          try {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CafeDetailsScreen(
+                  shopId: notification.relatedId!,
+                ),
               ),
-            ),
-          );
+            );
+          } catch (e) {
+            print('Error navigating to shop: $e');
+          }
         }
         break;
     }

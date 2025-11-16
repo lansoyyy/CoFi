@@ -25,6 +25,103 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isGoogleSigningIn = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Check if user is logged in but not verified
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkEmailVerificationStatus();
+    });
+  }
+
+  Future<void> _checkEmailVerificationStatus() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && !user.emailVerified) {
+      // User is logged in but email is not verified
+      await FirebaseAuth.instance.signOut(); // Sign them out
+      if (mounted) {
+        _showEmailVerificationRequiredDialog();
+      }
+    }
+  }
+
+  void _showEmailVerificationRequiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: Row(
+          children: [
+            const Icon(Icons.email_outlined, color: Colors.orange, size: 28),
+            const SizedBox(width: 12),
+            TextWidget(
+              text: 'Email Verification Required',
+              fontSize: 20,
+              color: Colors.white,
+              isBold: true,
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextWidget(
+              text: 'You must verify your email before using the app.',
+              fontSize: 16,
+              color: Colors.white,
+              align: TextAlign.left,
+            ),
+            const SizedBox(height: 12),
+            TextWidget(
+              text: 'Please check your inbox and click the verification link we sent you.',
+              fontSize: 14,
+              color: Colors.white70,
+              align: TextAlign.left,
+            ),
+            const SizedBox(height: 8),
+            TextWidget(
+              text: 'If you didn\'t receive the email, check your spam folder.',
+              fontSize: 14,
+              color: Colors.white70,
+              align: TextAlign.left,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              // Try to resend verification email to the last attempted user
+              if (_emailController.text.isNotEmpty) {
+                try {
+                  await FirebaseAuth.instance.sendPasswordResetEmail(email: _emailController.text.trim());
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('If an account exists with this email, a verification link has been sent.'),
+                        backgroundColor: Colors.blue,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  // Silently handle errors
+                }
+              }
+            },
+            child: TextWidget(
+              text: 'Resend verification email',
+              fontSize: 14,
+              color: primary,
+              isBold: true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();

@@ -16,6 +16,7 @@ class CommunityCommitmentScreen extends StatefulWidget {
 
 class _CommunityCommitmentScreenState extends State<CommunityCommitmentScreen> {
   bool _isLoading = false;
+  bool _isCheckingVerification = false;
 
   Future<void> _agreeAndContinue() async {
     if (_isLoading) return;
@@ -31,8 +32,19 @@ class _CommunityCommitmentScreenState extends State<CommunityCommitmentScreen> {
         return;
       }
 
+      // Check if email is verified before proceeding
+      await user.reload();
+      if (!user.emailVerified) {
+        if (mounted) {
+          _showEmailVerificationDialog();
+        }
+        return;
+      }
+
+      // Update commitment in Firestore
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'commitment': true,
+        'emailVerified': true, // Update email verification status
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
@@ -50,6 +62,155 @@ class _CommunityCommitmentScreenState extends State<CommunityCommitmentScreen> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showEmailVerificationDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: Row(
+          children: [
+            const Icon(Icons.email_outlined, color: Colors.orange, size: 28),
+            const SizedBox(width: 12),
+            TextWidget(
+              text: 'Email Verification Required',
+              fontSize: 20,
+              color: Colors.white,
+              isBold: true,
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextWidget(
+              text: 'You must verify your email before continuing.',
+              fontSize: 16,
+              color: Colors.white,
+              align: TextAlign.left,
+            ),
+            const SizedBox(height: 12),
+            TextWidget(
+              text: 'Please check your inbox and click the verification link we sent you.',
+              fontSize: 14,
+              color: Colors.white70,
+              align: TextAlign.left,
+            ),
+            const SizedBox(height: 8),
+            TextWidget(
+              text: 'If you didn\'t receive the email, check your spam folder.',
+              fontSize: 14,
+              color: Colors.white70,
+              align: TextAlign.left,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              setState(() => _isLoading = false);
+            },
+            child: TextWidget(
+              text: 'I\'ll check later',
+              fontSize: 14,
+              color: Colors.white70,
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _resendVerificationEmail();
+            },
+            child: TextWidget(
+              text: 'Resend email',
+              fontSize: 14,
+              color: primary,
+              isBold: true,
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _checkVerificationStatus();
+            },
+            child: TextWidget(
+              text: 'I\'ve verified',
+              fontSize: 14,
+              color: Colors.green,
+              isBold: true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resendVerificationEmail() async {
+    setState(() => _isCheckingVerification = true);
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && !user.emailVerified) {
+        await user.sendEmailVerification();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Verification email sent! Please check your inbox.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send verification email: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isCheckingVerification = false);
+    }
+  }
+
+  Future<void> _checkVerificationStatus() async {
+    setState(() => _isCheckingVerification = true);
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await user.reload();
+        if (user.emailVerified) {
+          // Email is now verified, proceed with commitment
+          await _agreeAndContinue();
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Email not verified yet. Please check your inbox and try again.'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            _showEmailVerificationDialog();
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to check verification status: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isCheckingVerification = false);
     }
   }
 
@@ -113,8 +274,8 @@ class _CommunityCommitmentScreenState extends State<CommunityCommitmentScreen> {
                       borderRadius: BorderRadius.circular(28)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                onPressed: _isLoading ? null : _agreeAndContinue,
-                child: _isLoading
+                onPressed: (_isLoading || _isCheckingVerification) ? null : _agreeAndContinue,
+                child: (_isLoading || _isCheckingVerification)
                     ? const SizedBox(
                         height: 22,
                         width: 22,

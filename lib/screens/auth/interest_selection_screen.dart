@@ -87,11 +87,19 @@ class _InterestSelectionScreenState extends State<InterestSelectionScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
+        // Check if email is verified before proceeding
+        await user.reload();
+        if (!user.emailVerified) {
+          _showEmailVerificationDialog();
+          return;
+        }
+
         await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .update({
           'interests': _getSelectedInterests(),
+          'emailVerified': true, // Update email verification status
           'updatedAt': FieldValue.serverTimestamp(),
         });
       }
@@ -109,6 +117,149 @@ class _InterestSelectionScreenState extends State<InterestSelectionScreen> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showEmailVerificationDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: Row(
+          children: [
+            const Icon(Icons.email_outlined, color: Colors.orange, size: 28),
+            const SizedBox(width: 12),
+            TextWidget(
+              text: 'Email Verification Required',
+              fontSize: 20,
+              color: Colors.white,
+              isBold: true,
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextWidget(
+              text: 'You must verify your email before saving interests.',
+              fontSize: 16,
+              color: Colors.white,
+              align: TextAlign.left,
+            ),
+            const SizedBox(height: 12),
+            TextWidget(
+              text: 'Please check your inbox and click the verification link we sent you.',
+              fontSize: 14,
+              color: Colors.white70,
+              align: TextAlign.left,
+            ),
+            const SizedBox(height: 8),
+            TextWidget(
+              text: 'If you didn\'t receive the email, check your spam folder.',
+              fontSize: 14,
+              color: Colors.white70,
+              align: TextAlign.left,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() => _isLoading = false);
+            },
+            child: TextWidget(
+              text: 'I\'ll check later',
+              fontSize: 14,
+              color: Colors.white70,
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _resendVerificationEmail();
+            },
+            child: TextWidget(
+              text: 'Resend email',
+              fontSize: 14,
+              color: primary,
+              isBold: true,
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _checkVerificationStatus();
+            },
+            child: TextWidget(
+              text: 'I\'ve verified',
+              fontSize: 14,
+              color: Colors.green,
+              isBold: true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resendVerificationEmail() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && !user.emailVerified) {
+        await user.sendEmailVerification();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Verification email sent! Please check your inbox.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send verification email: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _checkVerificationStatus() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await user.reload();
+        if (user.emailVerified) {
+          // Email is now verified, proceed with saving interests
+          await _saveInterestsAndContinue();
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Email not verified yet. Please check your inbox and try again.'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            _showEmailVerificationDialog();
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to check verification status: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

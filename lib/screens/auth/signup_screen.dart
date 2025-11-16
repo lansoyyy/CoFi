@@ -24,6 +24,12 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
+  
+  // Notification preferences
+  bool _emailNotifications = true;
+  bool _eventNotifications = true;
+  bool _jobNotifications = false;
+  bool _promoNotifications = false;
 
   @override
   void dispose() {
@@ -70,6 +76,13 @@ class _SignupScreenState extends State<SignupScreen> {
         'accountType': widget.accountType, // 'user' or 'business'
         'emailVerified': false, // Track email verification status
         'createdAt': FieldValue.serverTimestamp(),
+        // Notification preferences
+        'notificationPreferences': {
+          'emailNotifications': _emailNotifications,
+          'eventNotifications': _eventNotifications,
+          'jobNotifications': _jobNotifications,
+          'promoNotifications': _promoNotifications,
+        },
       }, SetOptions(merge: true));
 
       if (!mounted) return;
@@ -253,6 +266,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       },
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  _buildNotificationPreferences(),
                   const SizedBox(height: 18),
                   _buildDisclaimer(),
                   const SizedBox(height: 20),
@@ -352,6 +367,115 @@ class _SignupScreenState extends State<SignupScreen> {
               isBold: true,
               align: TextAlign.center,
             ),
+    );
+  }
+
+  Widget _buildNotificationPreferences() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextWidget(
+          text: 'Notification Preferences',
+          fontSize: 16,
+          color: Colors.white,
+          isBold: true,
+        ),
+        const SizedBox(height: 12),
+        TextWidget(
+          text: 'Choose the types of notifications you\'d like to receive:',
+          fontSize: 14,
+          color: Colors.white70,
+        ),
+        const SizedBox(height: 16),
+        
+        // Email Notifications
+        _buildNotificationToggle(
+          'Email Notifications',
+          'Receive important account updates via email',
+          _emailNotifications,
+          (value) => setState(() => _emailNotifications = value),
+        ),
+        const SizedBox(height: 12),
+        
+        // Event Notifications
+        _buildNotificationToggle(
+          'Event Notifications',
+          'Get notified about coffee events and meetups',
+          _eventNotifications,
+          (value) => setState(() => _eventNotifications = value),
+        ),
+        const SizedBox(height: 12),
+        
+        // Job Notifications
+        _buildNotificationToggle(
+          'Job Notifications',
+          'Receive alerts about new job opportunities at coffee shops',
+          _jobNotifications,
+          (value) => setState(() => _jobNotifications = value),
+        ),
+        const SizedBox(height: 12),
+        
+        // Promotional Notifications
+        _buildNotificationToggle(
+          'Promotional Notifications',
+          'Get updates about special offers and new features',
+          _promoNotifications,
+          (value) => setState(() => _promoNotifications = value),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNotificationToggle(
+    String title,
+    String description,
+    bool value,
+    Function(bool) onChanged,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF222222),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextWidget(
+                      text: title,
+                      fontSize: 15,
+                      color: Colors.white,
+                      isBold: true,
+                    ),
+                    const SizedBox(height: 4),
+                    TextWidget(
+                      text: description,
+                      fontSize: 13,
+                      color: Colors.white70,
+                      maxLines: 2,
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: value,
+                onChanged: onChanged,
+                activeColor: primary,
+                activeTrackColor: primary.withOpacity(0.3),
+                inactiveThumbColor: Colors.grey[400],
+                inactiveTrackColor: Colors.grey[700],
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

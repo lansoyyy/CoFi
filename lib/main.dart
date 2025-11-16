@@ -141,7 +141,12 @@ class AuthGate extends StatelessWidget {
               return const OnboardingScreen();
             }
 
-            // Signed in and has seen onboarding -> go home
+            // Check if email is verified
+            if (!user.emailVerified) {
+              return const LoginScreen(); // Redirect to login to show verification message
+            }
+
+            // Signed in, has seen onboarding, and email is verified -> go home
             return const HomeScreen();
           },
         );

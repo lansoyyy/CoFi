@@ -6,11 +6,13 @@ import '../../utils/colors.dart';
 class MenuPhotosScreen extends StatelessWidget {
   final List<String> menuPhotos;
   final String shopName;
+  final bool isGallery;
 
   const MenuPhotosScreen({
     super.key,
     required this.menuPhotos,
     required this.shopName,
+    this.isGallery = false,
   });
 
   @override
@@ -26,7 +28,7 @@ class MenuPhotosScreen extends StatelessWidget {
         ),
         centerTitle: false,
         title: TextWidget(
-          text: '$shopName Menu',
+          text: isGallery ? '$shopName Gallery' : '$shopName Menu',
           fontSize: 16,
           color: Colors.white,
           isBold: true,
@@ -38,14 +40,14 @@ class MenuPhotosScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.menu_book,
+                    Icon(
+                      isGallery ? Icons.photo_library : Icons.menu_book,
                       color: Colors.white54,
                       size: 64,
                     ),
                     const SizedBox(height: 16),
                     TextWidget(
-                      text: 'No menu photos available',
+                      text: isGallery ? 'No gallery photos available' : 'No menu photos available',
                       fontSize: 16,
                       color: Colors.white54,
                     ),
@@ -70,7 +72,7 @@ class MenuPhotosScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => PhotoViewScreen(
                               imageUrl: menuPhotos[index],
-                              tag: 'menu_photo_$index',
+                              tag: '${isGallery ? 'gallery' : 'menu'}_photo_$index',
                             ),
                           ),
                         );

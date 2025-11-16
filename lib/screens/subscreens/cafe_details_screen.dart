@@ -167,6 +167,10 @@ class CafeDetailsScreen extends StatelessWidget {
     // Get menu/price photos
     final List<String> menuPricePhotos =
         (s['menuPricePhotos'] as List?)?.cast<String>() ?? const [];
+    
+    // Get gallery photos
+    final List<String> gallery =
+        (s['gallery'] as List?)?.cast<String>() ?? const [];
 
     // Build contacts with links
     final List<_ContactItem> contactItems = [];
@@ -307,6 +311,8 @@ class CafeDetailsScreen extends StatelessWidget {
                   _buildContactsSection(contactItems),
                   const SizedBox(height: 32),
                   _buildMenuSection(context, name, menuPricePhotos),
+                  const SizedBox(height: 32),
+                  _buildGallerySection(context, name, gallery),
                   const SizedBox(height: 32),
                   (shopId != null && shopId!.isNotEmpty)
                       ? _buildReviewsSummaryStream(shopId!)
@@ -663,6 +669,138 @@ class CafeDetailsScreen extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGallerySection(BuildContext context, String shopName, List<String> gallery) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextWidget(
+            text: 'Gallery',
+            fontSize: 18,
+            color: Colors.white,
+            isBold: true,
+          ),
+          const SizedBox(height: 8),
+          if (gallery.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.photo_library, color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextWidget(
+                      text: 'No gallery photos available',
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            Column(
+              children: [
+                // Gallery preview with first 3 images
+                Container(
+                  height: 200,
+                  child: GridView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                      childAspectRatio: 1.0,
+                    ),
+                    itemCount: gallery.length > 3 ? 3 : gallery.length,
+                    itemBuilder: (context, index) {
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: CachedNetworkImage(
+                          imageUrl: gallery[index],
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey[800],
+                            child: const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey[800],
+                            child: const Center(
+                              child: Icon(Icons.image, color: Colors.white38, size: 30),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // View all gallery button
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MenuPhotosScreen(
+                          menuPhotos: gallery,
+                          shopName: shopName,
+                          isGallery: true,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[900],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.photo_library, color: Colors.white, size: 28),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextWidget(
+                            text: 'View all gallery photos (${gallery.length})',
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );

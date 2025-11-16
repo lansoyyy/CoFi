@@ -30,6 +30,16 @@ class _JobApplicationScreenState extends State<JobApplicationScreen> {
   String? _resumePath;
   String _resumeFileName = 'No file selected';
   bool _isLoading = false;
+  bool _hasApplied = false;
+  String? _userAccountType;
+  bool _acceptTerms = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUserTypeAndApplicationStatus();
+    _populateUserFields();
+  }
 
   @override
   void dispose() {
@@ -38,6 +48,68 @@ class _JobApplicationScreenState extends State<JobApplicationScreen> {
     _phoneController.dispose();
     _coverLetterController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkUserTypeAndApplicationStatus() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      // Check user account type
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+      
+      final userData = userDoc.data();
+      setState(() {
+        _userAccountType = userData?['accountType'] as String? ?? 'user';
+      });
+
+      // Check if user has already applied
+      final jobDoc = await FirebaseFirestore.instance
+          .collection('shops')
+          .doc(widget.shopId)
+          .collection('jobs')
+          .doc(widget.job!['id'])
+          .get();
+
+      final jobData = jobDoc.data();
+      final applications = jobData?['applications'] as List<dynamic>? ?? [];
+      
+      final hasApplied = applications.any((app) =>
+          app['applicantId'] == currentUser.uid &&
+          app['status'] != 'withdrawn');
+      
+      setState(() {
+        _hasApplied = hasApplied;
+      });
+    } catch (e) {
+      print('Error checking user status: $e');
+    }
+  }
+
+  Future<void> _populateUserFields() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+      
+      final userData = userDoc.data();
+      if (userData != null) {
+        setState(() {
+          _nameController.text = userData['name'] ?? '';
+          _emailController.text = userData['email'] ?? currentUser.email ?? '';
+          _phoneController.text = userData['phone'] ?? '';
+        });
+      }
+    } catch (e) {
+      print('Error populating user fields: $e');
+    }
   }
 
   Future<void> _pickResume() async {
@@ -70,6 +142,38 @@ class _JobApplicationScreenState extends State<JobApplicationScreen> {
           const SnackBar(
             content: Text('Please upload your resume/CV'),
             backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      if (!_acceptTerms) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please accept the authorization terms to submit your application'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Check if user is a business owner
+      if (_userAccountType == 'business') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Business accounts cannot apply for jobs'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Check if user has already applied
+      if (_hasApplied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You have already applied for this position'),
+            backgroundColor: Colors.orange,
           ),
         );
         return;
@@ -122,13 +226,13 @@ class _JobApplicationScreenState extends State<JobApplicationScreen> {
 
         // Update the applications array field in the job document
         await FirebaseFirestore.instance
-          ..collection('shops')
-              .doc(widget.shopId)
-              .collection('jobs')
-              .doc(widget.job!['id'])
-              .update({
-            'applications': FieldValue.arrayUnion([applicationData])
-          });
+            .collection('shops')
+            .doc(widget.shopId)
+            .collection('jobs')
+            .doc(widget.job!['id'])
+            .update({
+          'applications': FieldValue.arrayUnion([applicationData])
+        });
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -156,6 +260,131 @@ class _JobApplicationScreenState extends State<JobApplicationScreen> {
   @override
   Widget build(BuildContext context) {
     final job = widget.job ?? <String, dynamic>{};
+
+    // Check if user is a business owner
+    if (_userAccountType == 'business') {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          title: TextWidget(
+            text: 'Job Application',
+            fontSize: 20,
+            color: Colors.white,
+            isBold: true,
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.business_center,
+                  size: 80,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 24),
+                TextWidget(
+                  text: 'Business Account Detected',
+                  fontSize: 24,
+                  color: Colors.white,
+                  isBold: true,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Business accounts cannot apply for jobs. You can post jobs and manage applications from your business dashboard.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                ButtonWidget(
+                  label: 'Go to Business Dashboard',
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/businessDashboard');
+                  },
+                  width: double.infinity,
+                  color: primary,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Check if user has already applied
+    if (_hasApplied) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          title: TextWidget(
+            text: 'Job Application',
+            fontSize: 20,
+            color: Colors.white,
+            isBold: true,
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.check_circle,
+                  size: 80,
+                  color: Colors.green,
+                ),
+                const SizedBox(height: 24),
+                TextWidget(
+                  text: 'Application Already Submitted',
+                  fontSize: 24,
+                  color: Colors.white,
+                  isBold: true,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'You have already applied for this position. The employer will review your application and contact you if they are interested.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                ButtonWidget(
+                  label: 'Go Back',
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  width: double.infinity,
+                  color: primary,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -209,17 +438,38 @@ class _JobApplicationScreenState extends State<JobApplicationScreen> {
               const SizedBox(height: 24),
 
               // Personal Information Section
-              TextWidget(
-                text: 'Personal Information',
-                fontSize: 18,
-                color: Colors.white,
-                isBold: true,
+              Row(
+                children: [
+                  TextWidget(
+                    text: 'Personal Information',
+                    fontSize: 18,
+                    color: Colors.white,
+                    isBold: true,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    '*',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Fields marked with * are required',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                ),
               ),
               const SizedBox(height: 16),
 
               AppTextFormField(
                 controller: _nameController,
-                labelText: 'Full Name',
+                labelText: 'Full Name *',
                 keyboardType: TextInputType.name,
                 textInputAction: TextInputAction.next,
                 validator: (value) {
@@ -232,7 +482,7 @@ class _JobApplicationScreenState extends State<JobApplicationScreen> {
 
               AppTextFormField(
                 controller: _emailController,
-                labelText: 'Email Address',
+                labelText: 'Email Address *',
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 validator: (value) {
@@ -249,7 +499,7 @@ class _JobApplicationScreenState extends State<JobApplicationScreen> {
 
               AppTextFormField(
                 controller: _phoneController,
-                labelText: 'Phone Number',
+                labelText: 'Phone Number *',
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
                 validator: (value) {
@@ -263,11 +513,24 @@ class _JobApplicationScreenState extends State<JobApplicationScreen> {
               const SizedBox(height: 24),
 
               // Resume Upload Section
-              TextWidget(
-                text: 'Resume/CV',
-                fontSize: 18,
-                color: Colors.white,
-                isBold: true,
+              Row(
+                children: [
+                  TextWidget(
+                    text: 'Resume/CV',
+                    fontSize: 18,
+                    color: Colors.white,
+                    isBold: true,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    '*',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
 
@@ -352,6 +615,84 @@ class _JobApplicationScreenState extends State<JobApplicationScreen> {
               ),
 
               const SizedBox(height: 32),
+
+              // Authorization Checkbox
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1A1A),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Checkbox(
+                          value: _acceptTerms,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              _acceptTerms = value ?? false;
+                            });
+                          },
+                          fillColor: MaterialStateProperty.all(primary),
+                          checkColor: Colors.white,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _acceptTerms = !_acceptTerms;
+                              });
+                            },
+                            child: RichText(
+                              text: TextSpan(
+                                children: [
+                                  const TextSpan(
+                                    text: 'I accept to submit my application and authorize ',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const TextSpan(
+                                    text: 'CoFi',
+                                    style: TextStyle(
+                                      color: primary,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const TextSpan(
+                                    text: ' to process my personal data for recruitment purposes. I understand that my information will be handled according to the privacy policy and data protection regulations.',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (!_acceptTerms)
+                      const Text(
+                        'You must accept the authorization to submit your application',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
 
               // Submit Button
               ButtonWidget(

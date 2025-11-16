@@ -23,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _isGoogleSigningIn = false;
+  bool _obscurePassword = true;
 
   @override
   void initState() {
@@ -448,12 +449,26 @@ class _LoginScreenState extends State<LoginScreen> {
                                   const EdgeInsets.symmetric(horizontal: 16),
                               child: TextFormField(
                                 controller: _passwordController,
-                                obscureText: true,
+                                obscureText: _obscurePassword,
                                 style: const TextStyle(color: Colors.white),
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   hintText: 'Password',
-                                  hintStyle: TextStyle(color: Colors.grey),
+                                  hintStyle: const TextStyle(color: Colors.grey),
                                   border: InputBorder.none,
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscurePassword
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                      color: Colors.grey[600],
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _obscurePassword = !_obscurePassword;
+                                      });
+                                    },
+                                  ),
                                 ),
                                 validator: (v) {
                                   if (v == null || v.isEmpty) {

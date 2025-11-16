@@ -129,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.pushNamed(context, '/mapView');
                 },
                 label: TextWidget(
-                    text: 'Map', fontSize: 16, color: white, isBold: true),
+                    text: 'Nearby Cafes', fontSize: 16, color: white, isBold: true),
                 icon: Icon(
                   FontAwesomeIcons.map,
                   color: white,

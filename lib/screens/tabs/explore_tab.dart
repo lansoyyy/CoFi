@@ -612,15 +612,27 @@ class _ExploreTabState extends State<ExploreTab> {
       });
     }
 
+    // Always sort by rating first for featured shops (highest first)
+    // This ensures featured cafés are always sorted by rating regardless of filters
+    list.sort((a, b) {
+      num ra = (a.data()['ratings'] is num) ? a.data()['ratings'] as num : 0;
+      num rb = (b.data()['ratings'] is num) ? b.data()['ratings'] as num : 0;
+      if (rb != ra) return rb.compareTo(ra);
+      // If ratings are equal, sort by review count
+      int ca = ((a.data()['reviews'] as List?)?.length ?? 0);
+      int cb = ((b.data()['reviews'] as List?)?.length ?? 0);
+      return cb.compareTo(ca);
+    });
+
     // Chip filters: 0 Popular, 1 Newest, 2 Open now
-    // Only apply filtering when a chip is selected (not -1)
+    // Only apply additional filtering when a chip is selected (not -1)
     if (_selectedChip != -1) {
       switch (_selectedChip) {
         case 2: // Open now
           list.retainWhere((d) => _isOpenNowFromSchedule(
               (d.data()['schedule'] ?? {}) as Map<String, dynamic>));
           break;
-        case 1: // Newest
+        case 1: // Newest - re-sort by date after rating sort
           list.sort((a, b) {
             final ta = a.data()['postedAt'];
             final tb = b.data()['postedAt'];
@@ -632,32 +644,11 @@ class _ExploreTabState extends State<ExploreTab> {
                     : DateTime.fromMillisecondsSinceEpoch(0)));
           });
           break;
-        case 0: // Popular by ratings then reviews count
-          list.sort((a, b) {
-            num ra =
-                (a.data()['ratings'] is num) ? a.data()['ratings'] as num : 0;
-            num rb =
-                (b.data()['ratings'] is num) ? b.data()['ratings'] as num : 0;
-            if (rb != ra) return rb.compareTo(ra);
-            int ca = ((a.data()['reviews'] as List?)?.length ?? 0);
-            int cb = ((b.data()['reviews'] as List?)?.length ?? 0);
-            return cb.compareTo(ca);
-          });
+        case 0: // Popular - already sorted by rating above
           break;
         default:
           break;
       }
-    } else if (_userInterests.isNotEmpty) {
-      // When no filter is selected but we have user interests, we're showing recommendations
-      // Sort by ratings as default for recommendations
-      list.sort((a, b) {
-        num ra = (a.data()['ratings'] is num) ? a.data()['ratings'] as num : 0;
-        num rb = (b.data()['ratings'] is num) ? b.data()['ratings'] as num : 0;
-        if (rb != ra) return rb.compareTo(ra);
-        int ca = ((a.data()['reviews'] as List?)?.length ?? 0);
-        int cb = ((b.data()['reviews'] as List?)?.length ?? 0);
-        return cb.compareTo(ca);
-      });
     }
 
     return list;
